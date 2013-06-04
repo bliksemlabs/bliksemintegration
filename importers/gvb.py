@@ -35,6 +35,39 @@ SELECT 'UNITCODE' as type,dataownercode||':'||organizationalunitcode as unitcode
     cur.close()
     return rows
 
+def calculateTimeDemandGroupsGVB(conn):
+    cur = conn.cursor('timdemgrps',cursor_factory=psycopg2.extras.RealDictCursor)
+    timdemgroup_ids = {}
+    timdemgroups = {}
+    journeyinfo = {}
+    cur.execute("""
+SELECT concat_ws(':',version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber) as 
+JOURNEY_id, 
+array_agg(cast(patternpass.stoporder as integer) order by patternpass.stoporder) as 
+stoporders,array_agg(toseconds(coalesce(targetarrivaltime,targetdeparturetime),0) order by patternpass.stoporder) as 
+arrivaltimes,array_agg(toseconds(coalesce(targetdeparturetime,targetarrivaltime),0) order by patternpass.stoporder) as departuretimes
+FROM patternpass LEFT JOIN pujopass USING (version,dataownercode,lineplanningnumber,journeypatterncode,userstopcode)
+GROUP BY JOURNEY_id
+""")
+    for row in cur:
+        points = [(row['stoporders'][0],0,0)]
+        dep_time = row['departuretimes'][0]
+        for i in range(len(row['stoporders'][:-1])):     
+            cur_arr_time = row['arrivaltimes'][i+1]
+            cur_dep_time = row['departuretimes'][i+1]
+            points.append((row['stoporders'][i+1],cur_arr_time-dep_time,cur_dep_time-cur_arr_time))
+        m = md5.new()
+        m.update(str(points))
+        timdemgrp = {'POINTS' : []}
+        for point in points:
+            point_dict = {'pointorder' : point[0],'totaldrivetime' : point[1], 'stopwaittime' : point[2]}
+            timdemgrp['POINTS'].append(point_dict)
+        journeyinfo[row['journey_id']] = {'departuretime' : dep_time, 'timedemandgroupref' : m.hexdigest()}
+        timdemgrp['operator_id'] = m.hexdigest()
+        timdemgroups[m.hexdigest()] = timdemgrp
+    cur.close()
+    return (journeyinfo,timdemgroups)
+
 def import_zip(path,filename,meta=None):
     deprecated,conn = load(path,filename)
     try:
@@ -56,7 +89,7 @@ def import_zip(path,filename,meta=None):
         data['AVAILABILITYCONDITION'] = getAvailabilityConditionsFromSchedvers(conn)
         data['PRODUCTCATEGORY'] = getBISONproductcategories()
         data['ADMINISTRATIVEZONE'] = getAdministrativeZones(conn)
-        timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroups(conn)
+        timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroupsGVB(conn)
         routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getPool811)
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'])
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn)
