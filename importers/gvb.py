@@ -46,7 +46,7 @@ JOURNEY_id,
 array_agg(cast(patternpass.stoporder as integer) order by patternpass.stoporder) as 
 stoporders,array_agg(toseconds(coalesce(targetarrivaltime,targetdeparturetime),0) order by patternpass.stoporder) as 
 arrivaltimes,array_agg(toseconds(coalesce(targetdeparturetime,targetarrivaltime),0) order by patternpass.stoporder) as departuretimes
-FROM patternpass LEFT JOIN pujopass USING (version,dataownercode,lineplanningnumber,journeypatterncode,userstopcode)
+FROM patternpass JOIN pujopass USING (version,dataownercode,lineplanningnumber,journeypatterncode,userstopcode)
 GROUP BY JOURNEY_id
 """)
     for row in cur:
