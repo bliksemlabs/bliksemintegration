@@ -47,7 +47,7 @@ while True:
                 if message['messagetype'] == 'STOPERRORMESSAGE':
                     continue
 
-                needle = 'A%08X' % (zlib.crc32('|'.join([message[x] for x in ['dataownercode', 'messagecodedate', 'messagecodenumber']])))
+                needle = 'A%08X' % (zlib.crc32('|'.join([str(message[x]) for x in ['dataownercode', 'messagecodedate', 'messagecodenumber']])))
 
                 if message['messagetype'] == 'DELETEMESSAGE':
                     feedentity = feedmessage.entity.add()
@@ -72,27 +72,27 @@ while True:
                     continue
 
                 if 'mutatejourney' in cvlinfo:
-                    needle = 'M%08X' % (zlib.crc32('|'.join([cvlinfo['journey'][x] for x in ['dataownercode', 'lineplanningnumber', 'operatingday', 'journeynumber', 'reinforcementnumber']])))
+                    needle = 'M%08X' % (zlib.crc32('|'.join([str(cvlinfo['journey'][x]) for x in ['dataownercode', 'lineplanningnumber', 'operatingday', 'journeynumber', 'reinforcementnumber']])))
 
                     for operation in cvlinfo['mutatejourney']:
                         if operation['messagetype'] == 'CANCEL':
                             feedentity = feedmessage.entity.add()
                             feedentity.id = str(needle)
-                            feedmessage.entity.append(getAlertKV17(feedentity, operation, cvlinfo['journey']))
+                            getAlertKV17(feedentity, operation, cvlinfo['journey'])
 
                         elif operation['messagetype'] == 'RECOVER':
                             feedentity = feedmessage.entity.add()
                             feedentity.id = str(needle)
-                            feedmessage.entity.append(removeAlert(feedentity))
+                            removeAlert(feedentity)
 
 
                 if 'mutatejourneystop' in cvlinfo:
                     for operation in cvlinfo['mutatejourneystop']:
                         if operation['messagetype'] == 'MUTATIONMESSAGE':
-                            needle = 'M%08X' % (zlib.crc32('|'.join([cvlinfo['journey'][x] for x in ['dataownercode', 'lineplanningnumber', 'operatingday', 'journeynumber', 'reinforcementnumber']] + [operation['userstopcode']])))
+                            needle = 'M%08X' % (zlib.crc32('|'.join([str(cvlinfo['journey'][x]) for x in ['dataownercode', 'lineplanningnumber', 'operatingday', 'journeynumber', 'reinforcementnumber']] + [operation['userstopcode']])))
                             feedentity = feedmessage.entity.add()
                             feedentity.id = str(needle)
-                            feedmessage.entity.append(getAlertKV17(feedentity, operation, cvlinfo['journey'], operation['userstopcode']))
+                            getAlertKV17(feedentity, operation, cvlinfo['journey'], operation['userstopcode'])
 
         else:
             break
