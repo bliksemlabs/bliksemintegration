@@ -1,0 +1,47 @@
+delete from journey where availabilityconditionref not in (select id from activeavailabilitycondition WHERE todate >= date 'yesterday');
+
+DELETE FROM pointinjourneypattern WHERE journeypatternref NOT in (
+SELECT distinct journeypatternref from journey
+);
+
+DELETE FROM pointintimedemandgroup WHERE timedemandgroupref NOT in (
+SELECT distinct timedemandgroupref from journey
+);
+
+DELETE FROM administrativezone WHERE id NOT IN (
+SELECT DISTINCT administrativezoneref FROM pointinjourneypattern
+);
+
+DELETE FROM journeypattern WHERE id not in (
+SELECT distinct journeypatternref from pointinjourneypattern
+);
+
+DELETE FROM timedemandgroup WHERE id not in (
+SELECT distinct timedemandgroupref from pointintimedemandgroup
+);
+
+--DELETE FROM destinationdisplay WHERE id not in (
+--select distinct destinationdisplayref FROM journeypattern
+--UNION
+--select distinct destinationdisplayref FROM pointinjourneypattern WHERE
+--destinationdisplayref is not null
+--);
+
+DELETE FROM pointinroute WHERE routeref not in (
+SELECT DISTINCT routeref FROM journeypattern
+);
+
+DELETE FROM route WHERE id not in (
+SELECT DISTINCT routeref FROM journeypattern
+);
+
+DELETE FROM line where id not in (
+SELECT DISTINCT lineref FROM route
+);
+
+DELETE FROM STOPPOINT where id not in (
+SELECT DISTINCT pointref FROM pointinjourneypattern
+UNION
+SELECT DISTINCT onwardpointref FROM pointinjourneypattern
+WHERE onwardpointref is not null
+);

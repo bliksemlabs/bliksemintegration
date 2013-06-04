@@ -1,0 +1,283 @@
+create extension postgis;
+CREATE SEQUENCE gtfs_version START 1;
+
+create table DataSource(
+    id serial primary key NOT NULL,
+    operator_id varchar(255) NOT NULL,
+    name varchar(255) NOT NULL,
+    description varchar(255),
+    email varchar (255),
+    url varchar (255)
+);
+
+create table Operator(
+    id serial primary key NOT NULL,
+    operator_id varchar(255) NOT NULL,
+    privatecode varchar(255) NOT NULL,
+    name varchar(255) NOT NULL,
+    phone varchar(255),
+    url varchar(255) NOT NULL,
+    timezone varchar(255) NOT NULL,
+    language varchar(2) NOT NULL
+);
+
+create table Version(
+    id serial primary key,
+    operator_id varchar(255),
+    privatecode varchar(255) NOT NULL,
+    datasourceRef integer NOT NULL references datasource(id),
+    startdate date NOT NULL,
+    enddate date NOT NULL,
+    description varchar(255)
+);
+
+create table RejectedVersion(
+    id serial primary key,
+    operator_id varchar(255),
+    privatecode varchar(255) NOT NULL,
+    datasourceRef integer NOT NULL references datasource(id),
+    startdate date NOT NULL,
+    enddate date NOT NULL,
+    description varchar(255),
+    error varchar(255)
+);
+
+
+create table AvailabilityCondition(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255) NOT NULL,
+    operator_id varchar(255),
+    unitcode varchar(255),
+    versionRef integer references version(id) NOT NULL,
+    name varchar(255),
+    fromdate date,
+    todate date
+);
+
+create table AvailabilityConditionDay(
+    id serial8,
+    availabilityconditionRef integer references AvailabilityCondition(id) NOT NULL,
+    validdate date NOT NULL,
+    isavailable boolean,
+    primary key (availabilityconditionRef,validdate)
+);
+
+create table productCategory(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    shortname varchar(255),
+    name varchar(255)
+);
+
+create table notice(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    publiccode varchar(255),
+    shortcode varchar(255),
+    name varchar(255) NOT NULL
+);
+
+create table noticegroup(
+    id integer NOT NULL,
+    noticeRef integer references notice(id),
+    primary key(id,noticeref)
+);
+
+
+create table noticeassignment(
+    id bigserial primary key NOT NULL,
+    noticegroupRef integer,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    name varchar(255) NOT NULL,
+    validfrom date,
+    validthru date
+);
+
+create table destinationDisplay(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255) NOT NULL,
+    operator_id varchar(255),
+    name varchar(255) NOT NULL,
+    shortname varchar(255) NOT NULL,
+    vianame varchar(255)
+);
+
+create table timedemandgroup(
+    id bigserial primary key NOT NULL,
+    operator_id varchar(255),
+    privatecode varchar(255)
+);
+
+create table pointintimedemandgroup(
+    id bigserial primary key NOT NULL,
+    operator_id varchar(255),
+    privatecode varchar(255),
+    timedemandgroupref integer references timedemandgroup(id) NOT NULL,
+    pointorder integer NOT NULL,
+    totaldrivetime integer NOT NULL,
+    stopwaittime integer NOT NULL
+);
+
+create table Line(
+    id bigserial primary key NOT NULL,
+    operatorref integer references operator(id),
+    privatecode varchar(255) NOT NULL,
+    operator_id varchar(255) NOT NULL,
+    publiccode varchar(255) NOT NULL,
+    TransportMode varchar(255) NOT NULL,
+    name varchar(255),
+    monitored boolean
+);
+
+create table Route(
+    id bigserial primary key NOT NULL,
+    operator_id varchar(255) NOT NULL,
+    lineref integer references line(id)
+);
+
+create table PointInRoute(
+    routeref integer references route(id) NOT NULL,
+    privatecode varchar(255),
+    pointorder integer NOT NULL,
+    latitude double precision NOT NULL,
+    longitude double precision NOT NULL,
+    distancefromstart integer,
+    primary key (routeref,pointorder)
+);
+
+create table AdministrativeZone(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    name varchar(255),
+    description varchar (255)
+);
+
+create table JourneyPattern(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    routeref integer references route(id),
+    directiontype integer,
+    destinationdisplayref integer references destinationDisplay(id)
+);
+
+create table StopArea(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    name varchar(255),
+    town varchar(255),
+    latitude double precision,
+    longitude double precision,
+    timezone varchar(255),
+    publiccode varchar(255)
+);
+
+create table StopPoint(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    publiccode varchar(255),
+    isScheduled boolean,
+    stopareaRef integer references stoparea(id),
+    name varchar(255),
+    town varchar(255),
+    latitude double precision NOT NULL,
+    longitude double precision NOT NULL,
+    rd_x integer,
+    rd_y integer, 
+    timezone varchar(255)
+);
+
+CREATE VIEW scheduledstoppoint AS (SELECT id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone FROM 
+stoppoint where isscheduled = true);
+
+create table PointInJourneyPattern(
+    journeypatternref integer references journeypattern(id) NOT NULL,
+    pointorder integer NOT NULL,
+    privatecode varchar(255),
+    operator_id varchar(255),
+    pointref integer references stoppoint(id) NOT NULL,
+    destinationdisplayref integer references DestinationDisplay(id),
+    noticeassignmentRef integer references noticeassignment(id),
+    administrativezoneRef integer references administrativezone(id),
+    onwardpointref integer references stoppoint(id),
+    iswaitpoint boolean,
+    waittime integer,
+    requeststop boolean,
+    foralighting boolean,
+    forboarding boolean,
+    distancefromstartroute integer,
+    fareUnitsPassed integer,
+    primary key (journeypatternref,pointorder)
+);
+
+create table Journey(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255) NOT NULL,
+    operator_id varchar(255) NOT NULL,
+    availabilityconditionRef integer references AvailabilityCondition(id) NOT NULL,
+    journeypatternref integer references JourneyPattern(id) NOT NULL,
+    timedemandgroupref integer references timedemandgroup(id) NOT NULL,
+    productCategoryRef integer references productCategory (id) NOT NULL,
+    noticeassignmentRef integer references noticeassignment(id),
+    departuretime integer,
+    blockref integer,
+    name varchar(255),
+    lowfloor boolean,
+    hasLiftOrRamp boolean,
+    haswifi boolean,
+    bicycleAllowed boolean,
+    onDemand boolean
+);
+
+CREATE OR REPLACE FUNCTION 
+to32time(time24 text, shift24 integer) RETURNS text AS $$
+SELECT lpad(floor((total / 3600))::text, 2, '0')||':'||lpad(((total % 3600) / 60)::text, 2, '0')||':'||lpad((total % 60)::text, 2, '0') AS time
+FROM
+(SELECT
+  (cast(split_part($1, ':', 1) as int4) * 3600)      -- hours
++ (cast(split_part($1, ':', 2) as int4) * 60)        -- minutes
++ CASE WHEN $1 similar to '%:%:%' THEN (cast(split_part($1, ':', 3) as int4)) ELSE 0 END -- seconds when applicable
++ (shift24 * 86400) as total --Add 24 hours (in seconds) when shift occured
+) as xtotal
+$$ LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION 
+toseconds(time24 text, shift24 integer) RETURNS integer AS $$
+SELECT total AS time
+FROM
+(SELECT
+  (cast(split_part($1, ':', 1) as int4) * 3600)      -- hours
++ (cast(split_part($1, ':', 2) as int4) * 60)        -- minutes
++ CASE WHEN $1 similar to '%:%:%' THEN (cast(split_part($1, ':', 3) as int4)) ELSE 0 END -- seconds when applicable
++ (shift24 * 86400) as total --Add 24 hours (in seconds) when shift occured
+) as xtotal
+$$ LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION 
+to32time(secondssincemidnight integer) RETURNS text AS $$
+SELECT lpad(floor((secondssincemidnight / 3600))::text, 2, '0')||':'||lpad(((secondssincemidnight % 3600) / 60)::text, 2, 
+'0')||':'||lpad((secondssincemidnight % 60)::text, 2, '0') AS time
+$$ LANGUAGE SQL;
+
+CREATE VIEW ActiveAvailabilityCondition AS (
+SELECT id,privatecode,operator_id,unitcode,versionref,startdate,todate FROM (
+SELECT ac.id,privatecode,operator_id,unitcode,versionref,name,min(validdate) as startdate,max(validdate) as todate
+FROM AvailabilityCondition as ac LEFT JOIN AvailabilityConditionDay as ad ON ( ac.id = ad.availabilityconditionRef)
+WHERE isavailable = true
+GROUP BY ac.id) as x
+);
+
+CREATE VIEW ServiceJourney AS (
+SELECT * FROM journey
+);
+
+CREATE VIEW ActiveServiceJourney AS (
+SELECT * FROM journey WHERE AvailabilityConditionRef in (select id from ActiveAvailabilityCondition)
+);
+
