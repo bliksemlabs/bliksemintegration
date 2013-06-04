@@ -348,4 +348,19 @@ CREATE TEMPORARY TABLE pujopass (
     FOREIGN KEY (dataownercode, userstopcode) REFERENCES usrstop(dataownercode, userstopcode),
     FOREIGN KEY (dataownercode, lineplanningnumber, journeypatterncode) REFERENCES jopa(dataownercode, lineplanningnumber, journeypatterncode)
 ) ON COMMIT DROP;
+
+create view patternpass as (
+SELECT
+j.version,j.dataownercode,lineplanningnumber,journeypatterncode,
+cast(timinglinkorder as integer) as stoporder,
+userstopcodebegin as userstopcode
+FROM jopatili as j
+UNION (
+SELECT DISTINCT ON (j.version,j.dataownercode,lineplanningnumber,journeypatterncode)
+j.version,j.dataownercode,lineplanningnumber,journeypatterncode,
+cast(timinglinkorder+1 as integer) as stoporder,
+userstopcodeend as userstopcode
+FROM jopatili as j
+ORDER BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
+ORDER BY dataownercode,lineplanningnumber,journeypatterncode,stoporder);
 """
