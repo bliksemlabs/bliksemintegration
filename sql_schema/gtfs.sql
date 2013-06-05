@@ -114,7 +114,7 @@ SELECT
 j.id as trip_id,
 p_pt.pointorder as stop_sequence,
 p_pt.pointref as stop_id,
-CASE WHEN (p.destinationdisplayref != p_pt.destinationdisplayref) THEN d.name ELSE null END as stop_headsign,
+CASE WHEN (p.destinationdisplayref != p_pt.destinationdisplayref AND p_pt.destinationdisplayref is not null) THEN d.name ELSE null END as stop_headsign,
 to32time(departuretime+totaldrivetime) as arrival_time,
 to32time(departuretime+totaldrivetime+stopwaittime) as departure_time,
 CASE WHEN (forboarding = false) THEN 1
