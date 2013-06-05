@@ -101,7 +101,7 @@ pc.name as trip_long_name,
 (directiontype % 2 = 0)::int4 as direction_id,
 blockref as block_id,
 r.id as shape_id,
-(hasliftorramp or lowfloor) as wheelchair_accessible,
+(hasliftorramp or lowfloor)::int4 as wheelchair_accessible,
 CASE WHEN (bicycleallowed) THEN 2 ELSE NULL END as trip_bikes_allowed
 FROM servicejourney as j LEFT JOIN journeypattern as p on (j.journeypatternref = p.id)
                          LEFT JOIN route as r on (p.routeref = r.id)
