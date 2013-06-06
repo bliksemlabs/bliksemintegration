@@ -15,13 +15,44 @@ ScheduleRelationship: SCHEDULED, ADDED, UNSCHEDULED, CANCELED, REPLACEMENT
 
 """
 
+def getTripJourneyPattern(dataownercode, lineplanningnumber, journeynumber, operatingday):
+    print dataownercode, lineplanningnumber, journeynumber, operatingday
+    privatecode = ':'.join([dataownercode, lineplanningnumber, str(journeynumber)])
+
+    cur.execute("""SELECT journey.id, journeypatternref FROM journey 
+                   LEFT JOIN availabilityconditionday USING (availabilityconditionref)
+                   WHERE privatecode = %s and validdate = %s LIMIT 1;""", (privatecode, operatingday,))
+
+    result = cur.fetchone()
+    return str(result[0]), str(result[1])
+
+def getFirstStopFromJourneyPattern(journeypatternref):
+    cur.execute("""SELECT DISTINCT ON (journeypatternref), pointorder, pointref
+                   FROM pointinjourneypattern as p_pt
+                   WHERE journeypatternref = %s
+                   ORDER BY journeypatternref, pointorder ASC LIMIT 1;""", (journeypatternref,))
+
+    result = cur.fetchone()
+    return result[1], str(result[2])
+
+def getStopOrderFromJourneyPattern(journeypatternref, dataownercode, userstopcode, passagesequencenumber):
+    privatecode = ':'.join([dataownercode, userstopcode])
+    cur.execute("""SELECT pointorder, pointref
+                   FROM pointinjourneypattern as p_pt
+                   LEFT JOIN scheduledstoppoint as s ON (s.id = p_pt.pointref)
+                   WHERE journeypatternref = %s and s.operator_id = %s
+                   ORDER BY journeypatternref, pointorder ASC;""", (journeypatternref, privatecode,))
+
+    result = cur.fetchall()[passagesequencenumber]
+    return result[0], str(result[1])
+
 def getTripId(dataownercode, lineplanningnumber, journeynumber, operatingday):
     privatecode = ':'.join([dataownercode, lineplanningnumber, journeynumber])
 
     cur.execute("""SELECT j.id FROM servicejourney AS j
                                JOIN availabilityconditionday AS ac 
                                ON (j.availabilityconditionref = ac.availabilityconditionref) 
-                               WHERE privatecode = %s and validdate = %s LIMIT 1;""", (privatecode, operatingday))
+                               WHERE privatecode = %s and validdate = %s LIMIT 1;""", (privatecode, operatingday,))
     return str(cur.fetchone()[0])
 
 
