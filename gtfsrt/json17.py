@@ -32,13 +32,13 @@ def fetchfrommessage(message):
     for child in message.getchildren():
         parent_type = stripschema(child.tag)
         if parent_type == 'KV17MUTATEJOURNEY':
-            journey['mutatejourney'] = {'timestamp': get_elem_text(child, 'timestamp'), 'operations': []}
+            required = ['timestamp']
             for subchild in child.getchildren():
                 message_type = stripschema(subchild.tag)
                 if message_type in ['RECOVER', 'ADD']:
-                    journey['mutatejourney']['operations'].append(parseKV17(subchild, message_type, []))
+                    journey['mutatejourney'] = parseKV17(subchild, message_type, required)
                 elif message_type == 'CANCEL':
-                    journey['mutatejourney']['operations'].append(parseKV17(subchild, message_type, ['reasontype', 'subreasontype', 'reasoncontent', 'advicetype', 'subadvicetype', 'advicecontent']))
+                    journey['mutatejourney'] = parseKV17(subchild, message_type, required + ['reasontype', 'subreasontype', 'reasoncontent', 'advicetype', 'subadvicetype', 'advicecontent'])
 
         elif parent_type == 'KV17MUTATEJOURNEYSTOP':
             required = ['userstopcode', 'passagesequencenumber']
