@@ -35,8 +35,7 @@ GROUP BY dataownercode,messagecodedate,messagecodenumber
          WHERE array_length(stops, 1) > 0 AND
                isdeleted = FALSE AND
                messagepriority <> 'COMMERCIAL' AND
-               (messagedurationtype = 'REMOVE' OR
-                (messagedurationtype = 'ENDTIME' AND current_timestamp < messageendtime));
+               current_timestamp < messageendtime;
 """)
 
 message = cur.fetchone()

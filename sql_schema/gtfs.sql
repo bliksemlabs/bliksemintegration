@@ -101,7 +101,7 @@ pc.name as trip_long_name,
 (directiontype % 2 = 0)::int4 as direction_id,
 blockref as block_id,
 r.id as shape_id,
-(hasliftorramp or lowfloor) as wheelchair_accessible,
+(hasliftorramp or lowfloor)::int4 as wheelchair_accessible,
 CASE WHEN (bicycleallowed) THEN 2 ELSE NULL END as trip_bikes_allowed
 FROM servicejourney as j LEFT JOIN journeypattern as p on (j.journeypatternref = p.id)
                          LEFT JOIN route as r on (p.routeref = r.id)
@@ -114,7 +114,7 @@ SELECT
 j.id as trip_id,
 p_pt.pointorder as stop_sequence,
 p_pt.pointref as stop_id,
-CASE WHEN (p.destinationdisplayref != p_pt.destinationdisplayref) THEN d.name ELSE null END as stop_headsign,
+CASE WHEN (p.destinationdisplayref != p_pt.destinationdisplayref AND p_pt.destinationdisplayref is not null) THEN d.name ELSE null END as stop_headsign,
 to32time(departuretime+totaldrivetime) as arrival_time,
 to32time(departuretime+totaldrivetime+stopwaittime) as departure_time,
 CASE WHEN (forboarding = false) THEN 1
