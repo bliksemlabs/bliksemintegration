@@ -15,8 +15,6 @@ GTFS_RT_REQ_ZMQ = "tcp://127.0.0.1:6007"
 context = zmq.Context()
 
 storage = None
-update = 0
-lastupdate = 0
 
 def makemessage():
     feedmessage = FeedMessage()
@@ -68,6 +66,7 @@ while True:
         sockets = dict(poll.poll(60000))
         if receiver in sockets and sockets[receiver] == zmq.POLLIN:
             multipart = receiver.recv_multipart()
+            if multipart[0].endswith('/KV6posinfo'):
             kv6 = kv6tojson(GzipFile('','r',0,StringIO(''.join(multipart[1:]))).read())
 
             for posinfo in kv6:
@@ -96,8 +95,6 @@ while True:
 
                 if storage[needle] is not None:
                     storage[needle]['last'] = posinfo
-
-            update += 1
 
         elif request in sockets and sockets[request] == zmq.POLLIN:
             cmd = request.recv()
