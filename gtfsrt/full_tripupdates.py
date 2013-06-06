@@ -25,7 +25,7 @@ def makemessage():
     feedmessage.header.timestamp = int(time.time())
 
     for needle, posinfo in storage.items():
-        if posinfo is not None and 'punctuality' in posinfo['last']:
+        if posinfo['trip_id'] is not None and  posinfo is not None and 'punctuality' in posinfo['last']:
             feedentity = feedmessage.entity.add()
             feedentity.id = needle
             feedentity.trip_update.timestamp = int(time.mktime(iso8601.parse_date(posinfo['last']['timestamp']).timetuple()))

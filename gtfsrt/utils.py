@@ -24,7 +24,11 @@ def getTripJourneyPattern(dataownercode, lineplanningnumber, journeynumber, oper
                    WHERE privatecode = %s and validdate = %s LIMIT 1;""", (privatecode, operatingday,))
 
     result = cur.fetchone()
-    return str(result[0]), str(result[1])
+
+    if result is None:
+        return None, None
+    else:
+        return str(result[0]), str(result[1])
 
 def getFirstStopFromJourneyPattern(journeypatternref):
     cur.execute("""SELECT DISTINCT ON (journeypatternref), pointorder, pointref
