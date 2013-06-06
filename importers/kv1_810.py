@@ -82,8 +82,8 @@ FROM(
 		SELECT DISTINCT ON (operator_id,validfrom,validthru)
 		concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype) AS operator_id,
 		pj.daytype,
-		coalesce(tv.validfrom,pg.validthru) as validfrom,
-		coalesce(tv.validthru,pg.validthru) as validthru
+		pg.validfrom as validfrom,
+		pg.validthru as validthru
                 FROM pegrval as pg JOIN tive as tv USING (version, dataownercode, organizationalunitcode, periodgroupcode)
                                    JOIN pujo as pj USING (version, dataownercode, organizationalunitcode, timetableversioncode, periodgroupcode, specificdaycode)
                 WHERE coalesce(tv.validthru,pg.validthru) >= %s::date
