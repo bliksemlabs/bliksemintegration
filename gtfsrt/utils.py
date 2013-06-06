@@ -21,7 +21,7 @@ def getTripJourneyPattern(dataownercode, lineplanningnumber, journeynumber, oper
 
     cur.execute("""SELECT journey.id, journeypatternref FROM journey 
                    LEFT JOIN availabilityconditionday USING (availabilityconditionref)
-                   WHERE privatecode = %s and validdate = %s LIMIT 1;""", (privatecode, operatingday,))
+                   WHERE privatecode = %s and isavailable = true and validdate = %s LIMIT 1;""", (privatecode, operatingday,))
 
     result = cur.fetchone()
 
@@ -31,13 +31,13 @@ def getTripJourneyPattern(dataownercode, lineplanningnumber, journeynumber, oper
         return str(result[0]), str(result[1])
 
 def getFirstStopFromJourneyPattern(journeypatternref):
-    cur.execute("""SELECT DISTINCT ON (journeypatternref), pointorder, pointref
+    cur.execute("""SELECT DISTINCT ON (journeypatternref) pointorder, pointref
                    FROM pointinjourneypattern as p_pt
                    WHERE journeypatternref = %s
                    ORDER BY journeypatternref, pointorder ASC LIMIT 1;""", (journeypatternref,))
 
     result = cur.fetchone()
-    return result[1], str(result[2])
+    return result[0], str(result[1])
 
 def getStopOrderFromJourneyPattern(journeypatternref, dataownercode, userstopcode, passagesequencenumber):
     privatecode = ':'.join([dataownercode, userstopcode])
@@ -56,7 +56,7 @@ def getTripId(dataownercode, lineplanningnumber, journeynumber, operatingday):
     cur.execute("""SELECT j.id FROM servicejourney AS j
                                JOIN availabilityconditionday AS ac 
                                ON (j.availabilityconditionref = ac.availabilityconditionref) 
-                               WHERE privatecode = %s and validdate = %s LIMIT 1;""", (privatecode, operatingday,))
+                               WHERE privatecode = %s and isavailable = true and validdate = %s LIMIT 1;""", (privatecode, operatingday,))
     return str(cur.fetchone()[0])
 
 
@@ -85,7 +85,8 @@ def getStopSequenceTripId(dataownercode, lineplanningnumber, journeynumber, oper
                                                       JOIN pointinjourneypattern as pj_p
                                                       ON (j.journeypatternref = pj_p.journeypatternref), stoppoint AS sp
                                                       WHERE j.privatecode = %s AND
-                                                            validdate = %s AND 
+                                                            validdate = %s AND
+                                                            isavailable = true AND
                                                             sp.id = pj_p.pointref
                                                       ORDER by j.id, pj_p.pointorder;""", (privatecode, operatingday))
 
