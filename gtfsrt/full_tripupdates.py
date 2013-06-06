@@ -22,24 +22,24 @@ def makemessage():
     feedmessage.header.incrementality = FeedHeader.FULL_DATASET
     feedmessage.header.timestamp = int(time.time())
 
-    for needle, posinfo in storage.items():
-        if posinfo['trip_id'] is not None and  posinfo is not None and 'punctuality' in posinfo['posinfo']:
+    for needle, tripinfo in storage.items():
+        if tripinfo['trip_id'] is not None and  tripinfo is not None and 'punctuality' in tripinfo['posinfo']:
             feedentity = feedmessage.entity.add()
             feedentity.id = needle
-            feedentity.trip_update.timestamp = int(time.mktime(iso8601.parse_date(posinfo['posinfo']['timestamp']).timetuple()))
-            feedentity.trip_update.trip.start_date = posinfo['start_date']
-            feedentity.trip_update.trip.trip_id = posinfo['trip_id']
+            feedentity.trip_update.timestamp = int(time.mktime(iso8601.parse_date(tripinfo['posinfo']['timestamp']).timetuple()))
+            feedentity.trip_update.trip.start_date = tripinfo['start_date']
+            feedentity.trip_update.trip.trip_id = tripinfo['trip_id']
             
             update = feedentity.trip_update.stop_time_update.add()
             update.schedule_relationship = TripUpdate.StopTimeUpdate.SCHEDULED
 
-            if posinfo['posinfo']['messagetype'] == 'DELAY':
-                update.stop_sequence, update.stop_id = getFirstStopFromJourneyPattern(posinfo['journeypatternref'])
-                update.departure.delay = posinfo['posinfo']['punctuality']
+            if tripinfo['posinfo']['messagetype'] == 'DELAY':
+                update.stop_sequence, update.stop_id = getFirstStopFromJourneyPattern(tripinfo['journeypatternref'])
+                update.departure.delay = tripinfo['posinfo']['punctuality']
             else:
-                update.stop_sequence, update.stop_id = getStopOrderFromJourneyPattern(posinfo['journeypatternref'], posinfo['posinfo']['dataownercode'], posinfo['posinfo']['userstopcode'], posinfo['posinfo']['passagesequencenumber'])
-                update.arrival.delay = posinfo['posinfo']['punctuality']
-                feedentity.trip_update.vehicle.id = str(posinfo['posinfo']['vehiclenumber'])
+                update.stop_sequence, update.stop_id = getStopOrderFromJourneyPattern(tripinfo['journeypatternref'], tripinfo['posinfo']['dataownercode'], tripinfo['posinfo']['userstopcode'], tripinfo['posinfo']['passagesequencenumber'])
+                update.arrival.delay = tripinfo['posinfo']['punctuality']
+                feedentity.trip_update.vehicle.id = str(tripinfo['posinfo']['vehiclenumber'])
 
     f = open("/tmp/tripUpdates.pb", "wb")
     f.write(feedmessage.SerializeToString())
@@ -67,34 +67,34 @@ while True:
         if receiver in sockets and sockets[receiver] == zmq.POLLIN:
             multipart = receiver.recv_multipart()
             if multipart[0].endswith('/KV6posinfo'):
-            kv6 = kv6tojson(GzipFile('','r',0,StringIO(''.join(multipart[1:]))).read())
+                kv6 = kv6tojson(GzipFile('','r',0,StringIO(''.join(multipart[1:]))).read())
 
-            for posinfo in kv6:
-                if posinfo['lineplanningnumber'] is None:
-                    continue
-
-                needle = '%08X' % (abs(zlib.crc32('|'.join([str(posinfo[x]) for x in ['dataownercode', 'lineplanningnumber', 'operatingday', 'journeynumber', 'reinforcementnumber']]))))
-
-                if posinfo['messagetype'] == 'INIT':
-                    if needle in storage:
-                        del(storage[needle])
-                    continue
-
-                elif posinfo['messagetype'] == 'END':
-                    if needle in storage:
-                        storage[needle] = None
-                    continue
-
-                if needle not in storage:
-                    if posinfo['messagetype'] == 'OFFROUTE':
+                for posinfo in kv6:
+                    if posinfo['lineplanningnumber'] is None:
                         continue
 
-                    storage[needle] = {}
-                    storage[needle]['start_date'] = posinfo['operatingday'].replace('-', '')
-                    storage[needle]['trip_id'], storage[needle]['journeypatternref'] = getTripJourneyPattern(posinfo['dataownercode'], posinfo['lineplanningnumber'], posinfo['journeynumber'], posinfo['operatingday'])
+                    needle = '%08X' % (abs(zlib.crc32('|'.join([str(posinfo[x]) for x in ['dataownercode', 'lineplanningnumber', 'operatingday', 'journeynumber', 'reinforcementnumber']]))))
 
-                if storage[needle] is not None:
-                    storage[needle]['posinfo'] = posinfo
+                    if posinfo['messagetype'] == 'INIT':
+                        if needle in storage:
+                            del(storage[needle])
+                        continue
+
+                    elif posinfo['messagetype'] == 'END':
+                        if needle in storage:
+                            storage[needle] = None
+                        continue
+
+                    if needle not in storage:
+                        if posinfo['messagetype'] == 'OFFROUTE':
+                            continue
+
+                        storage[needle] = {}
+                        storage[needle]['start_date'] = posinfo['operatingday'].replace('-', '')
+                        storage[needle]['trip_id'], storage[needle]['journeypatternref'] = getTripJourneyPattern(posinfo['dataownercode'], posinfo['lineplanningnumber'], posinfo['journeynumber'], posinfo['operatingday'])
+
+                    if storage[needle] is not None:
+                        storage[needle]['posinfo'] = posinfo
 
         elif request in sockets and sockets[request] == zmq.POLLIN:
             cmd = request.recv()
