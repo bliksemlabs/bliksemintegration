@@ -32,7 +32,7 @@ def fetchfrommessage(message):
     for child in message.getchildren():
         parent_type = stripschema(child.tag)
         if parent_type == 'KV17MUTATEJOURNEY':
-            journey['mutatejourneystop'] = {'timestamp': get_elem_text(child, 'timestamp'), 'operations': []}
+            journey['mutatejourney'] = {'timestamp': get_elem_text(child, 'timestamp'), 'operations': []}
             for subchild in child.getchildren():
                 message_type = stripschema(subchild.tag)
                 if message_type in ['RECOVER', 'ADD']:
