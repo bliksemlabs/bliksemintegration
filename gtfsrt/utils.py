@@ -5,7 +5,7 @@ import psycopg2
 from datetime import datetime
 from gtfs_realtime_pb2 import Alert, TripDescriptor, VehiclePosition
 
-conn = psycopg2.connect("dbname='rid2'")
+conn = psycopg2.connect("dbname='rid'")
 cur = conn.cursor()
 
 """
