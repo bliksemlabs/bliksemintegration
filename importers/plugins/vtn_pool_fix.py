@@ -21,12 +21,12 @@ GROUP BY pl.version,pl.dataownercode,userstopcodebegin,userstopcodeend
 """)
     for row in cur.fetchall():
         pool = [x.split('|') for x in row[0].split('\n')]
-        if len(pool) == 2:
-            continue
         for p in pool:
             for i in [0,5,6,7]:
                 p[i] = int(p[i])
             p[8] = float(p[8])
+        if len(pool) == 2 and pool[1][5] != 0:
+            continue
         pool = sorted(pool, key=operator.itemgetter(8))
         pool[0][5] = 0
         clean_pool = [pool[0]]
