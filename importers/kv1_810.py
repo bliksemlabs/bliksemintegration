@@ -170,7 +170,7 @@ FROM pujo LEFT JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumbe
                                              ORDER BY version,dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder) as pattern
                         USING(version,dataownercode,lineplanningnumber,journeypatterncode)
               LEFT JOIN line using (version,dataownercode,lineplanningnumber)
-WHERE dataownerisoperator = true
+WHERE (dataownerisoperator = true or lineplanningnumber in ('X058'))
 ORDER BY version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype, lineplanningnumber, journeynumber
 """)
     journeys = cur.fetchall()
@@ -318,6 +318,7 @@ def getLines(conn):
 SELECT
 CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATERBUS'
      WHEN (dataownercode = 'HTM' and transporttype = 'BUS' and cast(lineplanningnumber as integer) <= 42) THEN 'HTMBUZZ'
+     WHEN (dataownercode = 'CXX' and lineplanningnumber in ('X058'))                         THEN 'NIAG'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) = 'U')           THEN 'GVU'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) IN ('A','X'))    THEN 'BRENG'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) = 'L')           THEN 'HERMES'

@@ -38,6 +38,13 @@ def getOperator():
                                'url'         : 'http://www.gvu.nl',
                                'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'},
+              'NIAG' :        {'privatecode' : 'NIAG',
+                               'operator_id' : 'NIAG',
+                               'name'        : 'NIAG',
+                               'phone'       : '+4901803504030',
+                               'url'         : 'http://www.niag-online.de/',
+                               'timezone'    : 'Europe/Berlin',
+                               'language'    : 'nl'},
               'HERMES' :      {'privatecode' : 'HERMES',
                                'operator_id' : 'HERMES',
                                'name'        : 'Hermes',
@@ -48,7 +55,7 @@ def getOperator():
            }
 
 def import_zip(path,filename,version):
-    validfrom = '2013-06-02'
+    validfrom = '2013-06-22'
     validthru = '2014-01-04'
     meta,conn = load(path,filename)
     cur = conn.cursor()
