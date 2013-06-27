@@ -281,3 +281,22 @@ CREATE VIEW ActiveServiceJourney AS (
 SELECT * FROM journey WHERE AvailabilityConditionRef in (select id from ActiveAvailabilityCondition)
 );
 
+CREATE FUNCTION bitcalendar(date[]) RETURNS varbit AS $$
+SELECT string_agg((b is not null)::int4::char, '' ORDER BY a)::varbit FROM
+(SELECT generate_series($1[array_lower($1,1)], $1[array_upper($1,1)], '1 day')::date AS a) AS x
+LEFT JOIN
+(SELECT unnest($1) AS b) AS y
+ON a = b;
+$$ LANGUAGE SQL;
+
+CREATE FUNCTION bitcalendar(date, varbit) RETURNS date[] AS $$
+SELECT array_agg(DISTINCT selecteddate ORDER BY selecteddate)
+FROM
+(SELECT *, row_number() OVER () AS a
+FROM (SELECT generate_series($1, $1 + LENGTH($2), '1 day')::date AS selecteddate) AS x) AS x1
+LEFT JOIN
+(SELECT *, row_number() OVER () AS b
+FROM (SELECT regexp_split_to_table($2::varchar,'') AS usedate) AS y) AS y1
+ON a = b
+WHERE usedate = '1';
+$$ LANGUAGE SQL; 
