@@ -43,7 +43,7 @@ def getOperator():
                                'name'        : 'NIAG',
                                'phone'       : '+4901803504030',
                                'url'         : 'http://www.niag-online.de/',
-                               'timezone'    : 'Europe/Berlin',
+                               'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'},
               'HERMES' :      {'privatecode' : 'HERMES',
                                'operator_id' : 'HERMES',
