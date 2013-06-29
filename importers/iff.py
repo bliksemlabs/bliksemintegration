@@ -534,8 +534,12 @@ coalesce(variant,servicenumber)::integer as name,
 NULL as lowfloor,
 NULL as hasLiftOrRamp,
 NULL as haswifi,
-NULL as bicycleAllowed,
-NULL as onDemand
+CASE WHEN transmode in ('NSS','NSB','B','BNS','X','U','Y') THEN false
+     WHEN (ARRAY['GEFI']::varchar[] <@ attrs) THEN false
+     WHEN (ARRAY['FIET']::varchar[] <@ attrs) THEN true
+     WHEN transmode in('IC','SPR','S','ST','INT','ES','THA','TGV','ICD') THEN true 
+     ELSE NULL END as bicycleAllowed,
+CASE WHEN (ARRAY['RESV']::varchar[] <@ attrs) THEN true ELSE NULL END as onDemand
 FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid)
 ORDER BY serviceid,servicenumber,stoporder
 """)
