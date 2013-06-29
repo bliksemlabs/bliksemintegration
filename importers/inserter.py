@@ -95,7 +95,7 @@ def import_availabilityconditions(conn,data):
             validdays = item['DAYS']
             del(item['DAYS'])
         item['versionref'] = data['VERSION'][item['versionref']]
-        exists,id = simple_dict_insert(conn,'AVAILABILITYCONDITION',item)
+        exists,id = simple_dict_insert(conn,'AVAILABILITYCONDITION',item,check_existing=False)
         data['AVAILABILITYCONDITION'][key] = id
         if exists or validdays is None:
             continue
@@ -144,7 +144,7 @@ def import_journeypatterns(conn,data):
     for code,pattern in data['JOURNEYPATTERN'].items():
         points = pattern['POINTS']
         for point in pattern['POINTS']:
-            setRefsDict(point,data['DESTINATIONDISPLAY'],'destinationdisplayref')
+            setRefsDict(point,data['DESTINATIONDISPLAY'],'destinationdisplayref',ignore_null=True)
             setRefsDict(point,data['STOPPOINT'],'pointref')
             setRefsDict(point,data['STOPPOINT'],'onwardpointref',ignore_null=True)
             if 'ADMINISTRATIVEZONE' in data:
@@ -267,7 +267,7 @@ def reject(data):
 def insert(data):
     conn = psycopg2.connect(database_connect)
     try:
-        checkIfExistingVersion(conn,data['VERSION'])
+        #checkIfExistingVersion(conn,data['VERSION'])
         simple_dictdict_insert(conn,'DATASOURCE',data['DATASOURCE'])
         merge(conn,data,data['MERGESTRATEGY'])
         simple_dictdict_insert(conn,'OPERATOR',data['OPERATOR'])

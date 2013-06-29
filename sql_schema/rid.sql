@@ -190,11 +190,12 @@ create table StopPoint(
     longitude double precision NOT NULL,
     rd_x integer,
     rd_y integer, 
-    timezone varchar(255)
+    timezone varchar(255),
+    platformcode varchar(25)
 );
 
-CREATE VIEW scheduledstoppoint AS (SELECT id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone FROM 
-stoppoint where isscheduled = true);
+CREATE VIEW scheduledstoppoint AS (SELECT id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone,stopcode,platformcode 
+FROM stoppoint where isscheduled = true);
 
 create table PointInJourneyPattern(
     journeypatternref integer references journeypattern(id) NOT NULL,

@@ -30,7 +30,8 @@ longitude as stop_lon,
 0 as location_type,
 'stoparea:'||stoparearef as parent_station,
 CASE WHEN (stoparearef is null) THEN timezone ELSE NULL END as stop_timezone,
-0 as wheelchair_boarding
+0 as wheelchair_boarding,
+platformcode as platform_code 
 FROM scheduledstoppoint
 UNION
 SELECT
@@ -42,7 +43,8 @@ longitude as stop_lon,
 1 as location_type,
 NULL as parent_station,
 timezone as stop_timezone,
-0 as wheelchair_boarding
+0 as wheelchair_boarding,
+NULL as platformcode
 FROM stoparea
 ) to '/tmp/stops.txt' CSV HEADER;
 
@@ -99,7 +101,8 @@ d.name as trip_headsign,
 j.name as trip_short_name,
 pc.name as trip_long_name,
 (directiontype % 2 = 0)::int4 as direction_id,
-blockref as block_id,
+CASE WHEN (blockref like 'IFF:%') THEN blockref ELSE NULL END as block_id,
+NULL as block_id,
 r.id as shape_id,
 (hasliftorramp or lowfloor)::int4 as wheelchair_accessible,
 CASE WHEN (bicycleallowed) THEN 2 ELSE NULL END as trip_bikes_allowed
