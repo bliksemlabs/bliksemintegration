@@ -42,6 +42,7 @@ def import_zip(path,filename,version):
         routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getPoolIFF)
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'])
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn)
+        data['JOURNEYTRANSFERS'] = getTripTransfers(conn)
         data['NOTICEASSIGNMENT'] = {}
         data['NOTICE'] = {}
         data['NOTICEGROUP'] = {}

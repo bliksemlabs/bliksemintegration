@@ -495,10 +495,13 @@ WHERE idx = s.firststop AND idx != timetable_transport.laststop
 UNION
 SELECT 
 companynumber,serviceid,v.footnote,servicenumber,variant,servicename,transmode,idx,coalesce(arrivaltime,'00:00:00'),departuretime,station,arrival as 
-arrivalplatform,departure  as departureplatform,attrs,'INTERMEDIATE' as stoptype
+arrivalplatform,departure  as departureplatform,attrs,
+CASE WHEN (timetable_transport.firststop < idx and timetable_transport.laststop  = idx) THEN 'LAST'
+     WHEN (timetable_transport.laststop > idx and timetable_transport.firststop = idx) THEN 'FIRST'
+     ELSE 'INTERMEDIATE' END as stoptype
 FROM timetable_service as s LEFT JOIN timetable_stop USING (serviceid) LEFT JOIN timetable_platform USING (serviceid,station,idx) LEFT JOIN 
 timetable_validity as v USING (serviceid)
-     LEFT JOIN (select serviceid,transmode,generate_series(firststop::int,laststop::int) as idx from timetable_transport) as timetable_transport USING (serviceid,idx)
+     LEFT JOIN (select serviceid,transmode,firststop,laststop,generate_series(firststop::int,laststop::int) as idx from timetable_transport) as timetable_transport USING (serviceid,idx)
      LEFT JOIN (select serviceid,array_agg(code) as attrs,generate_series(firststop::int,laststop::int) as idx from timetable_attribute GROUP BY serviceid,idx) as timetable_attribute USING (serviceid,idx)
 WHERE idx between s.firststop+1 and s.laststop-1
 UNION

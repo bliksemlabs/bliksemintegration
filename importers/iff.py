@@ -521,7 +521,7 @@ FROM company where company in (select distinct companynumber from timetable_serv
 def getJourneys(timedemandGroupRefForJourney,conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-SELECT DISTINCT ON (serviceid,servicenumber)
+SELECT DISTINCT ON (serviceid,line_id,patterncode,servicenumber)
 concat_ws(':','IFF',coalesce(variant,servicenumber)) as privatecode,
 concat_ws(':','IFF',serviceid,line_id,v.footnote,coalesce(variant,servicenumber)) as operator_id,
 concat_ws(':', 'IFF',versionnumber,v.footnote) as availabilityconditionRef,
@@ -542,15 +542,41 @@ CASE WHEN transmode in ('NSS','NSB','B','BNS','X','U','Y') THEN false
      ELSE NULL END as bicycleAllowed,
 CASE WHEN (ARRAY['RESV']::varchar[] <@ attrs) THEN true ELSE NULL END as onDemand
 FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid),delivery
-ORDER BY serviceid,servicenumber,stoporder
+ORDER BY serviceid,line_id,patterncode,servicenumber,stoporder
 """)
-    journeys = []
+    journeys = {}
     for row in cur.fetchall():
         row.update(timedemandGroupRefForJourney[row['operator_id']])
-        journeys.append(row)
+        journeys[row['operator_id']] = row
     cur.close()
     return journeys
 
+def getTripTransfers(conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+SELECT DISTINCT ON (journeyref,pointref,onwardjourneyref,onwardpointref)
+md5(concat_ws(':','IFF',p.serviceid,p.line_id,p.footnote,coalesce(p.variant,p.servicenumber),onward.serviceid,onward.line_id,onward.footnote,coalesce(onward.variant,onward.servicenumber),possiblechange)) as operator_id,
+concat_ws(':','IFF',p.serviceid,p.line_id,p.footnote,coalesce(p.variant,p.servicenumber)) as journeyref,
+'IFF:'||p.station||':'||coalesce(p.platform,'0') as pointref,
+concat_ws(':','IFF',onward.serviceid,onward.line_id,onward.footnote,coalesce(onward.variant,onward.servicenumber)) as onwardjourneyref,
+'IFF:'||onward.station||':'||coalesce(onward.platform,'0') as onwardpointref,
+possiblechange as transfer_type
+FROM 
+changes as c,passtimes as p, passtimes as onward
+WHERE
+c.fromservice = p.serviceid AND
+c.station = p.station AND
+c.toservice = onward.serviceid AND
+c.station = onward.station AND
+coalesce(p.foralighting,true) = true AND
+coalesce(onward.forboarding,true) = true
+ORDER BY journeyref,pointref,onwardjourneyref,onwardpointref,transfer_type""")
+    transfers = {}
+    for row in cur.fetchall():
+        transfers[row['operator_id']] = row
+    cur.close()
+    return transfers
+     
 def getLines(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""

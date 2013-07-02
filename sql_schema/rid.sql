@@ -236,13 +236,16 @@ create table Journey(
     onDemand boolean
 );
 
-create table triptransfers(
-    journeyref bigint references journey(id),
+create table journeytransfers(
+    operator_id varchar(255),
+    journeyref bigint,
     pointref bigint references stoppoint(id),
-    onwardjourneyref bigint references journey(id),
-    onwardpointref bigint references journey(id),
+    onwardjourneyref bigint,
+    onwardpointref bigint references stoppoint(id),
     transfer_type int4,
-    primary key (journeyref,pointref,onwardjourneyref,onwardpointref)
+    PRIMARY KEY (journeyref,pointref,onwardjourneyref,onwardpointref),
+    FOREIGN KEY (journeyref) REFERENCES journey(id) ON DELETE CASCADE,
+    FOREIGN KEY (onwardjourneyref) REFERENCES journey(id) ON DELETE CASCADE
 );
 
 CREATE OR REPLACE FUNCTION 

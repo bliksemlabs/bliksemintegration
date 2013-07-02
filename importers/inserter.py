@@ -54,7 +54,7 @@ def simple_dict_insert(conn,table,dict_item,check_existing=True,return_id=True):
         return (False,id)
 
 
-def simple_dictdict_insert(conn,table,dictionary):
+def simple_dictdict_insert(conn,table,dictionary,return_id=True):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if table == 'STOPAREA':
         ignore_keys = ['latitude','longitude']
@@ -71,12 +71,16 @@ def simple_dictdict_insert(conn,table,dictionary):
                dictionary[dict_key] = dictold['id']
         if record_exists:
            continue
-        query = "INSERT INTO %s (%s) VALUES (%s) returning id" % (table,','.join(columns),','.join(['%s' for i in range(len(columns))]))
+        if return_id:
+            query = "INSERT INTO %s (%s) VALUES (%s) returning id" % (table,','.join(columns),','.join(['%s' for i in range(len(columns))]))
    
-        cur.execute(query,[item[key] for key in columns])
-        id = cur.fetchone()['id']
-        item['id'] = id
-        dictionary[dict_key] = id
+            cur.execute(query,[item[key] for key in columns])
+            id = cur.fetchone()['id']
+            item['id'] = id
+            dictionary[dict_key] = id
+        else:
+            query = "INSERT INTO %s (%s) VALUES (%s)" % (table,','.join(columns),','.join(['%s' for i in range(len(columns))]))
+            cur.execute(query,[item[key] for key in columns])
     cur.close()
 
 def checkIfExistingVersion(conn,dictionary):
@@ -289,6 +293,12 @@ def insert(data):
         import_availabilityconditions(conn,data) 
         import_journeypatterns(conn,data)
         import_journeys(conn,data)
+        if 'JOURNEYTRANSFERS' in data:
+            setRefs(data['JOURNEYTRANSFERS'],data['JOURNEY'],'journeyref')
+            setRefs(data['JOURNEYTRANSFERS'],data['STOPPOINT'],'pointref')
+            setRefs(data['JOURNEYTRANSFERS'],data['JOURNEY'],'onwardjourneyref')
+            setRefs(data['JOURNEYTRANSFERS'],data['STOPPOINT'],'onwardpointref')
+            simple_dictdict_insert(conn,'JOURNEYTRANSFERS',data['JOURNEYTRANSFERS'],return_id=False)
         conn.commit()
     except:
         conn.rollback()
