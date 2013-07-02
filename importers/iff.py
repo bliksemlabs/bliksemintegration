@@ -147,7 +147,7 @@ SELECT
 2 as pointorder,
 latitude,
 longitude,
-100 as distancefromstart
+200 as distancefromstart
 FROM quays
 WHERE id = %s
 """,[stopbegin,stopend]*2)
@@ -287,12 +287,12 @@ ORDER BY versionnumber,footnote
         availabilityconditions[row['operator_id']] = row
     cur.execute("""
 SELECT 
-'IFF:'||footnote as availabilityconditionRef,
+'IFF:'||versionnumber||':'||footnote as availabilityconditionRef,
 array_agg(servicedate::text) as validdates,
 true as isavailable
-FROM footnote
-GROUP BY footnote
-ORDER BY footnote
+FROM footnote,delivery
+GROUP BY versionnumber,footnote
+ORDER BY versionnumber,footnote
 ;
 """)
     for row in cur.fetchall():
@@ -465,12 +465,12 @@ ORDER BY p1.line_id,p1.patterncode,p1.stoporder ASC
             distance = 0
             patternref = row['journeypatternref']
         for point in routes[journeypatterns[row['journeypatternref']]['routeref']]['POINTS']:
-            if point['distancefromstart'] >= distance and point['privatecode'] == row['pointref']:
+            if point['distancefromstart'] >= distance and point['privatecode'] is not None and 'IFF:'+point['privatecode'] == row['pointref']:
                 distance = point['distancefromstart']
                 row['distancefromstartroute'] = distance
                 break
         if distance == 0 and int(row['pointorder']) > 3:
-            raise Exception('distancefromstartroute going wrong')
+            raise Exception('distancefromstartroute going wrong'+str(journeypatterns[row['journeypatternref']]['POINTS']))
         row['distancefromstartroute'] = distance
         journeypatterns[row['journeypatternref']]['POINTS'].append(row)
     cur.close()
@@ -524,7 +524,7 @@ def getJourneys(timedemandGroupRefForJourney,conn):
 SELECT DISTINCT ON (serviceid,servicenumber)
 concat_ws(':','IFF',coalesce(variant,servicenumber)) as privatecode,
 concat_ws(':','IFF',serviceid,line_id,v.footnote,coalesce(variant,servicenumber)) as operator_id,
-concat_ws(':', 'IFF',v.footnote) as availabilityconditionRef,
+concat_ws(':', 'IFF',versionnumber,v.footnote) as availabilityconditionRef,
 concat_ws(':','IFF',line_id,patterncode) as journeypatternref,
 NULL as timedemandgroupref,
 'IFF:'||transmode as productCategoryRef,
@@ -541,7 +541,7 @@ CASE WHEN transmode in ('NSS','NSB','B','BNS','X','U','Y') THEN false
      WHEN transmode in('IC','SPR','S','ST','INT','ES','THA','TGV','ICD') THEN true 
      ELSE NULL END as bicycleAllowed,
 CASE WHEN (ARRAY['RESV']::varchar[] <@ attrs) THEN true ELSE NULL END as onDemand
-FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid)
+FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid),delivery
 ORDER BY serviceid,servicenumber,stoporder
 """)
     journeys = []
