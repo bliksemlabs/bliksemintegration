@@ -138,3 +138,19 @@ t_pt.pointorder)
                          LEFT JOIN destinationdisplay as d ON (p_pt.destinationdisplayref = d.id), scheduledstoppoint as s_pt
 WHERE p_pt.pointref = s_pt.id and totaldrivetime is not null
 ) to '/tmp/stop_times.txt' CSV HEADER;
+
+copy (
+SELECT
+pointref as from_stop_id,
+onwardpointref as to_stop_id,
+NULL as from_route_id,
+NULL as to_route_id,
+journeyref as from_trip_id,
+onwardjourneyref as to_trip_id,
+CASE WHEN (transfer_type = 0) THEN 3
+     WHEN (transfer_type = 1) THEN 0
+     WHEN (transfer_type = 2) THEN 1 END as transfer_type
+FROM 
+journeytransfers
+) to '/tmp/transfers.txt' CSV HEADER;
+
