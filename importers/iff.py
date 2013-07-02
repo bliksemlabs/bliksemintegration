@@ -500,6 +500,7 @@ def getOperator(conn):
                  'CONNEXXI': {'url' : 'http://www.connexxion.nl',  'language' : 'nl', 'phone' : '0900-2666399'},
                  'RNET'    : {'url' : 'http://www.connexxion.nl',  'language' : 'nl', 'phone' : '0900-2666399'},
                  'NS'      : {'url' : 'http://www.ns.nl',          'language' : 'nl', 'phone' : '0900-2021163'},
+                 'ARRIVA'  : {'url' : 'http://www.arriva.nl',      'language' : 'nl', 'phone' : '0900-2022022'},
                  'NOORD'   : {'url' : 'http://www.arriva.nl',      'language' : 'nl', 'phone' : '0900-2022022'}
                 }
     result = {}
