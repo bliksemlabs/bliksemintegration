@@ -480,11 +480,11 @@ serviceid,transmode,coalesce(servicenumber,variant) ORDER BY idx ASC) as
 stoporder,arrivaltime,departuretime,station,arrivalplatform,departureplatform,
 md5(string_agg(station||':'||coalesce(departureplatform,'0')||':'||coalesce(arrivalplatform,'0')||':'||attrs::text,'>') over (PARTITION BY 
 serviceid,coalesce(servicenumber,variant))) as patterncode,attrs,
-(not (ARRAY['NUIT']::varchar[] <@ attrs)) as foralighting,
-(not (ARRAY['NIIN']::varchar[] <@ attrs)) as forboarding
+((not (ARRAY['NUIT']::varchar[] <@ attrs)) and stoptype <> 'FIRST') as foralighting,
+((not (ARRAY['NIIN']::varchar[] <@ attrs)) and stoptype <> 'LAST') as forboarding
 FROM (
 SELECT companynumber,serviceid,v.footnote,servicenumber,variant,servicename,transmode,idx,departuretime as 
-arrivaltime,departuretime,station,departure as arrivalplatform,departure as departureplatform,attrs
+arrivaltime,departuretime,station,departure as arrivalplatform,departure as departureplatform,attrs,'FIRST' as stoptype
 FROM timetable_service as s LEFT JOIN timetable_stop USING (serviceid) LEFT JOIN timetable_platform USING (serviceid,station,idx) LEFT JOIN 
 timetable_validity as v USING (serviceid)
      LEFT JOIN (select serviceid,transmode,firststop,laststop,generate_series(firststop::int,laststop::int) as idx from timetable_transport) as 
@@ -495,7 +495,7 @@ WHERE idx = s.firststop AND idx != timetable_transport.laststop
 UNION
 SELECT 
 companynumber,serviceid,v.footnote,servicenumber,variant,servicename,transmode,idx,coalesce(arrivaltime,'00:00:00'),departuretime,station,arrival as 
-arrivalplatform,departure  as departureplatform,attrs
+arrivalplatform,departure  as departureplatform,attrs,'INTERMEDIATE' as stoptype
 FROM timetable_service as s LEFT JOIN timetable_stop USING (serviceid) LEFT JOIN timetable_platform USING (serviceid,station,idx) LEFT JOIN 
 timetable_validity as v USING (serviceid)
      LEFT JOIN (select serviceid,transmode,generate_series(firststop::int,laststop::int) as idx from timetable_transport) as timetable_transport USING (serviceid,idx)
@@ -503,7 +503,7 @@ timetable_validity as v USING (serviceid)
 WHERE idx between s.firststop+1 and s.laststop-1
 UNION
 SELECT companynumber,serviceid,v.footnote,servicenumber,variant,servicename,transmode,idx,arrivaltime,arrivaltime as departuretime,station,arrival as 
-arrivalplatform,arrival as departureplatform,attrs
+arrivalplatform,arrival as departureplatform,attrs, 'LAST' as stoptype
 FROM timetable_service as s LEFT JOIN timetable_stop USING (serviceid) LEFT JOIN timetable_platform USING (serviceid,station,idx) LEFT JOIN timetable_validity as v USING (serviceid)
      LEFT JOIN (select serviceid,transmode,firststop,laststop,generate_series(firststop::int,laststop::int) as idx from timetable_transport) as timetable_transport USING (serviceid,idx)
      LEFT JOIN (select serviceid,array_agg(code) as attrs,laststop as idx from timetable_attribute GROUP BY serviceid,idx) as timetable_attribute USING (serviceid,idx)
@@ -515,27 +515,23 @@ create table passtimes as (
 SELECT line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,station,platform,
 row_number() over(PARTITION BY line_id,serviceid,transmode,coalesce(servicenumber,variant) ORDER BY stoporder,arrivaltime ASC) as stoporder
 ,arrivaltime,departuretime,md5(string_agg(station||':'||coalesce(platform,'0'),'>') OVER (PARTITION BY 
-line_id,serviceid,transmode,coalesce(servicenumber,variant))) as patterncode
-,attrs,foralighting,forboarding
+line_id,serviceid,transmode,coalesce(servicenumber,variant))) as patterncode,attrs,foralighting,forboarding
 FROM
 (SELECT
 line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,stoporder,station,departureplatform as platform,
-arrivaltime,departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,
-foralighting,forboarding
+arrivaltime,departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,foralighting,forboarding
 FROM 
 timetable WHERE arrivalplatform = departureplatform or arrivalplatform is null
 UNION
 SELECT
 line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,stoporder,station,arrivalplatform as platform,
-arrivaltime,arrivaltime as departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,
-foralighting,false as forboarding
+arrivaltime,arrivaltime as departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,foralighting,false as forboarding
 FROM 
 timetable WHERE arrivalplatform <> departureplatform
 UNION
 SELECT
 line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,stoporder,station,departureplatform as platform,
-to32time(toseconds(arrivaltime,0)+15) as arrivaltime,departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,
-false as foralighting,forboarding
+to32time(toseconds(arrivaltime,0)+15) as arrivaltime,departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,false as foralighting,forboarding
 FROM 
 timetable WHERE arrivalplatform <> departureplatform) as x
 ORDER BY line_id,servicenumber,variant,serviceid,stoporder

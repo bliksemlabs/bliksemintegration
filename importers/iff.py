@@ -584,7 +584,7 @@ line_id as operator_id,
 line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
-begin_station.name||' <-> '||dest_station.name as name,
+least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name) as name,
 CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y')) THEN 'BUS'
      WHEN (transmode = 'NSM') THEN 'METRO'
      WHEN (transmode = 'NST') THEN 'TRAM'
