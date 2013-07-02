@@ -15,7 +15,6 @@ operator_id as agency_id,
 name as agency_name,
 url as agency_url,
 timezone as agency_timezone,
-language as agency_lang,
 phone as agency_phone
 FROM operator
 ) to '/tmp/agency.txt' CSV HEADER;
@@ -104,7 +103,9 @@ pc.name as trip_long_name,
 CASE WHEN (blockref like 'IFF:%') THEN blockref ELSE NULL END as block_id,
 NULL as block_id,
 r.id as shape_id,
-(hasliftorramp or lowfloor)::int4 as wheelchair_accessible,
+CASE WHEN (hasliftorramp is null and lowfloor is null) THEN 0::int4
+     WHEN (hasliftorramp or lowfloor) THEN 1::int4 
+     ELSE 2::int4 END as wheelchair_accessible,
 CASE WHEN (bicycleallowed) THEN 2 ELSE NULL END as trip_bikes_allowed
 FROM servicejourney as j LEFT JOIN journeypattern as p on (j.journeypatternref = p.id)
                          LEFT JOIN route as r on (p.routeref = r.id)
