@@ -1,5 +1,13 @@
 delete from journey where availabilityconditionref not in (select id from activeavailabilitycondition WHERE todate >= date 'yesterday');
 
+DELETE FROM availabilityconditionday WHERE availabilityconditionref not in (
+select distinct availabilityconditionref from journey
+);
+
+DELETE FROM availabilitycondition WHERE ID not in (
+select distinct availabilityconditionref from journey
+);
+
 DELETE FROM pointinjourneypattern WHERE journeypatternref NOT in (
 SELECT distinct journeypatternref from journey
 );
@@ -45,3 +53,5 @@ UNION
 SELECT DISTINCT onwardpointref FROM pointinjourneypattern
 WHERE onwardpointref is not null
 );
+
+DELETE from stoparea where id not in (select distinct stoparearef from stoppoint where stoparearef is not null);
