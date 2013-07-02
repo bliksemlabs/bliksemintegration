@@ -170,13 +170,14 @@ None, 'lowfloor': True, 'blockref': None, 'departuretime': 32640, 'journeypatter
 """
 
 def import_journeys(conn,data):
-    for journey in data['JOURNEY']:
+    for key,journey in data['JOURNEY'].items():
         setRefsDict(journey,data['AVAILABILITYCONDITION'],'availabilityconditionref')
         setRefsDict(journey,data['JOURNEYPATTERN'],'journeypatternref')
         setRefsDict(journey,data['TIMEDEMANDGROUP'],'timedemandgroupref')
         setRefsDict(journey,data['NOTICEASSIGNMENT'],'noticeassignmentref',ignore_null=True)
         setRefsDict(journey,data['PRODUCTCATEGORY'],'productcategoryref')
-        exists = simple_dict_insert(conn,'JOURNEY',journey,check_existing=False,return_id=False)
+        exists,id = simple_dict_insert(conn,'JOURNEY',journey,check_existing=False,return_id=True)
+        data['JOURNEY'][key] = id
         if exists:
             raise Exception('duplicate journey')
 

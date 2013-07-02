@@ -176,7 +176,9 @@ FROM pujo LEFT JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumbe
 WHERE (dataownerisoperator = true or lineplanningnumber in ('X058'))
 ORDER BY version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype, lineplanningnumber, journeynumber
 """)
-    journeys = cur.fetchall()
+    journeys = {}
+    for journey in cur.fetchall():
+        journeys[journey['operator_id']] = journey
     cur.close()
     return journeys
 
@@ -213,10 +215,10 @@ FROM pujopass LEFT JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningn
               LEFT JOIN line using (version,dataownercode,lineplanningnumber)
 ORDER BY version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber,wheelchairaccessible ASC,stoporder
 """)
-    journeys = []
+    journeys = {}
     for row in cur.fetchall():
         row.update(timedemandGroupRefForJourney[row['operator_id']])
-        journeys.append(row)
+        journeys[row['operator_id']] = row
     cur.close()
     return journeys
 

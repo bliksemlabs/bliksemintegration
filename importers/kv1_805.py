@@ -504,10 +504,10 @@ FROM pujopass LEFT JOIN (SELECT DISTINCT ON (dataownercode,lineplanningnumber,jo
 USING(dataownercode,lineplanningnumber,journeypatterncode)
 ORDER BY version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber,stoporder ASC
 """)
-    journeys = []
+    journeys = {}
     for row in cur.fetchall():
         row.update(timedemandGroupRefForJourney[row['operator_id']])
-        journeys.append(row)
+        journwys[row['operator_id']] = row
     cur.close()
     return journeys
 
