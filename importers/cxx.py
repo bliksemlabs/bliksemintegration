@@ -55,7 +55,7 @@ def getOperator():
            }
 
 def import_zip(path,filename,version):
-    validfrom = '2013-06-22'
+    validfrom = '2013-07-13'
     validthru = '2014-01-04'
     meta,conn = load(path,filename)
     cur = conn.cursor()
