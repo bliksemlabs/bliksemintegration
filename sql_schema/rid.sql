@@ -236,6 +236,15 @@ create table Journey(
     onDemand boolean
 );
 
+create table triptransfers(
+    journeyref bigint references journey(id),
+    pointref bigint references stoppoint(id),
+    onwardjourneyref bigint references journey(id),
+    onwardpointref bigint references journey(id),
+    transfer_type int4,
+    primary key (journeyref,pointref,onwardjourneyref,onwardpointref)
+);
+
 CREATE OR REPLACE FUNCTION 
 to32time(time24 text, shift24 integer) RETURNS text AS $$
 SELECT lpad(floor((total / 3600))::text, 2, '0')||':'||lpad(((total % 3600) / 60)::text, 2, '0')||':'||lpad((total % 60)::text, 2, '0') AS time
