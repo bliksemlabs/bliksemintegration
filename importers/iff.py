@@ -580,9 +580,9 @@ ORDER BY journeyref,pointref,onwardjourneyref,onwardpointref,transfer_type""")
 def getLines(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-(SELECT DISTINCT ON (line_id)
-line_id as operator_id,
-line_id as privatecode,
+(SELECT DISTINCT ON (p.line_id)
+p.line_id as operator_id,
+p.line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
 CASE WHEN (servicename is not null) THEN servicename||' '||begin_station.name||' <-> '||dest_station.name
@@ -591,23 +591,23 @@ CASE WHEN (servicename is not null) THEN servicename||' '||begin_station.name||'
 false as monitored
 FROM
 passtimes as p,trnsmode as m,company as c,
-(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx ASC) as begin,
-(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx DESC) as dest,
+(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder ASC) as begin,
+(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder DESC) as dest,
 station as begin_station,
 station as dest_station
 WHERE
 m.code = p.transmode and
 p.companynumber = c.company AND
-p.serviceid = begin.serviceid AND
-p.serviceid = dest.serviceid AND
+p.line_id = begin.line_id AND
+p.line_id = dest.line_id AND
 begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
 transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y')
-ORDER BY line_id,(servicenumber % 2 = 0),stoporder)
+ORDER BY p.line_id,(servicenumber % 2 = 0),stoporder)
 UNION
-(SELECT DISTINCT ON (line_id)
-line_id as operator_id,
-line_id as privatecode,
+(SELECT DISTINCT ON (p.line_id)
+p.line_id as operator_id,
+p.line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
 least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name) as name,
@@ -618,20 +618,20 @@ CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y')) THEN 'BUS'
 false as monitored
 FROM
 trnsmode as m,passtimes as p,company as c,
-(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx ASC) as begin,
-(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx DESC) as dest,
+(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder ASC) as begin,
+(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder DESC) as dest,
 station as begin_station,
 station as dest_station
 WHERE
 m.code = p.transmode and
 p.companynumber = c.company AND
-p.serviceid = begin.serviceid AND
-p.serviceid = dest.serviceid AND
+p.line_id = begin.line_id AND
+p.line_id = dest.line_id AND
 begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
 transmode in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y')
 ORDER BY 
-line_id,least(begin.station,dest.station),greatest(begin.station,dest.station))""")
+p.line_id,least(begin.station,dest.station),greatest(begin.station,dest.station))""")
     lines = {}
     for row in cur.fetchall():
         lines[row['operator_id']] = row
