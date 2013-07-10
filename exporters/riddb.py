@@ -165,11 +165,11 @@ WHERE j.id = %s
         """ generator that takes a list of trip_ids 
         and returns all timedemandgroups in order for those trip_ids """
         for trip_id in trip_ids :
-            query = """SELECT timedemandgroupref FROM journey WHERE journey.id = %s""" 
+            query = """SELECT timedemandgroupref,departuretime FROM journey WHERE journey.id = %s""" 
             c = self.conn.cursor()
             c.execute(query,[trip_id])
-            for (timedemandgroupref) in c.fetchall():
-                yield (timedemandgroupref)
+            for (timedemandgroupref,departuretime) in c.fetchall():
+                yield (timedemandgroupref,departuretime)
 
     def fetch_stop_times(self,trip_ids) :
         """ generator that takes a list of trip_ids 
