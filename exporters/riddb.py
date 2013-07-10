@@ -186,6 +186,17 @@ WHERE j.id = %s
         cur.execute( "SELECT count(*) FROM scheduledstoppoint" )
         return cur.fetchone()[0]
 
+    def gettimepatterns(self):
+        cur = self.conn.cursor()
+        cur.execute("""
+SELECT timedemandgroupref,array_agg(totaldrivetime||':'||stopwaittime::text ORDER BY pointorder) as timegroup
+FROM pointintimedemandgroup GROUP BY timedemandgroupref""")
+        res = cur.fetchall()
+        for row in res:
+            for point in row[1]:
+                point.split(':')
+        return res
+
     def service_ids(self):
         query = "SELECT DISTINCT service_id FROM servicecalendar"
         cur = self.conn.cursor()
