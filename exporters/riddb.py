@@ -193,8 +193,8 @@ SELECT timedemandgroupref,array_agg(totaldrivetime||':'||stopwaittime::text ORDE
 FROM pointintimedemandgroup GROUP BY timedemandgroupref""")
         res = cur.fetchall()
         for row in res:
-            for point in row[1]:
-                point.split(':')
+            for i in len(row[1]):
+                row[1][i] = point.split(':')
         return res
 
     def service_ids(self):
