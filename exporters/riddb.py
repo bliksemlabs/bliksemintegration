@@ -161,6 +161,16 @@ WHERE j.id = %s
         cur.close()
         return ret
 
+    def fetch_timedemandgroups(self,trip_ids) :
+        """ generator that takes a list of trip_ids 
+        and returns all timedemandgroups in order for those trip_ids """
+        for trip_id in trip_ids :
+            query = """SELECT timedemandgroupref FROM journey WHERE journey.id = %s""" 
+            c = self.conn.cursor()
+            c.execute(query,[trip_id])
+            for (timedemandgroupref) in c.fetchall():
+                yield (timedemandgroupref)
+
     def fetch_stop_times(self,trip_ids) :
         """ generator that takes a list of trip_ids 
         and returns all stop times in order for those trip_ids """
