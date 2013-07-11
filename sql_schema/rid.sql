@@ -313,3 +313,18 @@ FROM (SELECT regexp_split_to_table($2::varchar,'') AS usedate) AS y) AS y1
 ON a = b
 WHERE usedate = '1';
 $$ LANGUAGE SQL; 
+
+-- Indices
+create index on journey(journeypatternref);
+create index on journey(timedemandgroupref);
+
+CREATE table transportmode (
+    transportmode varchar(255), 
+    bison_transporttype varchar(255), 
+    gtfs_route_type int4
+);
+INSERT INTO transportmode VALUES ('TRAM','TRAM',0);
+INSERT INTO transportmode VALUES ('METRO','METRO',1);
+INSERT INTO transportmode VALUES ('TRAIN','TRAIN',2);
+INSERT INTO transportmode VALUES ('BUS','BUS',3);
+INSERT INTO transportmode VALUES ('BOAT','BOAT',4);
