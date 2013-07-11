@@ -105,6 +105,13 @@ ORDER BY service_id
         cur.close()
         return start_date, end_date
 
+    def gettransfers(self,from_stop_id):
+        cur = self.conn.cursor()
+        cur.execute("SELECT from_stop_id,to_stop_id,9,distance from transfers where from_stop_id = %s",[from_stop_id])
+        res = cur.fetchall()
+        cur.close()
+        return res
+
     def find_max_service (self) :
         cur = self.conn.cursor()
         cur.execute("""
@@ -203,8 +210,9 @@ SELECT timedemandgroupref,array_agg(totaldrivetime||':'||stopwaittime::text ORDE
 FROM pointintimedemandgroup GROUP BY timedemandgroupref""")
         res = cur.fetchall()
         for row in res:
-            for i in len(row[1]):
-                row[1][i] = point.split(':')
+            for i in range(len(row[1])):
+                v = row[1][i].split(':')
+                row[1][i] = (int(v[0]),int(v[1]))
         return res
 
     def service_ids(self):
@@ -256,7 +264,11 @@ FROM
        WHERE jp.pointref = sp.id AND jp.pointorder = tp.pointorder AND timedemandgroupref = %s AND journeypatternref = %s) as x
 GROUP BY journeypatternref
 """,[timedemandgroups[0],journeypatternref])
-            journeypatternref,stop_ids,pickup_types,drop_off_types = d.fetchone()
+            try:
+                journeypatternref,stop_ids,pickup_types,drop_off_types = d.fetchone()
+            except:
+                print [timedemandgroups[0],journeypatternref]
+                continue
             pattern_signature = (tuple(stop_ids),tuple(pickup_types),tuple(drop_off_types))
             if productcategory is not None and len(productcategory) < 1:
                 productcategory = None
