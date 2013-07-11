@@ -3,131 +3,6 @@ import psycopg2.extras
 import md5
 from copy import deepcopy
 
-"""
-CREATE OR REPLACE FUNCTION 
-toseconds(time24 text, shift24 integer) RETURNS integer AS $$
-SELECT total AS time
-FROM
-(SELECT
-  (cast(split_part($1, ':', 1) as int4) * 3600)      -- hours
-+ (cast(split_part($1, ':', 2) as int4) * 60)        -- minutes
-+ CASE WHEN $1 similar to '%:%:%' THEN (cast(split_part($1, ':', 3) as int4)) ELSE 0 END -- seconds when applicable
-+ (shift24 * 86400) as total --Add 24 hours (in seconds) when shift occured
-) as xtotal
-$$ LANGUAGE SQL;
-
-CREATE OR REPLACE FUNCTION 
-to32time(secondssincemidnight integer) RETURNS text AS $$
-SELECT lpad(floor((secondssincemidnight / 3600))::text, 2, '0')||':'||lpad(((secondssincemidnight % 3600) / 60)::text, 2, 
-'0')||':'||lpad((secondssincemidnight % 60)::text, 2, '0') AS time
-$$ LANGUAGE SQL;
-
-CREATE OR REPLACE FUNCTION 
-route(servicenumber integer,variant integer) RETURNS integer AS $$
-SELECT CASE WHEN (servicenumber = 0 and variant is null) THEN NULL
-            WHEN (coalesce(servicenumber,variant) between 0 and 99)    THEN (coalesce(servicenumber,variant)/10)*10
-            WHEN (coalesce(servicenumber,variant) between 100 and 109) THEN 100
-            WHEN (coalesce(servicenumber,variant) between 140 and 149) THEN 140
-            WHEN (coalesce(servicenumber,variant) between 240 and 249) THEN 240
-            WHEN (coalesce(servicenumber,variant) between 430 and 439) THEN 430
-            WHEN (coalesce(servicenumber,variant) between 440 and 449) THEN 440
-            WHEN (coalesce(servicenumber,variant) between 100 and 99999) THEN (coalesce(servicenumber,variant)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 690000 and 699999) THEN ((coalesce(servicenumber,variant)-690000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 700000 and 709999) THEN ((coalesce(servicenumber,variant)-700000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 710000 and 739999) THEN ((coalesce(servicenumber,variant)-710000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 720000 and 739999) THEN ((coalesce(servicenumber,variant)-720000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 730000 and 739999) THEN ((coalesce(servicenumber,variant)-730000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 740000 and 749999) THEN ((coalesce(servicenumber,variant)-740000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 750000 and 759999) THEN ((coalesce(servicenumber,variant)-750000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 800000 and 809999) THEN ((coalesce(servicenumber,variant)-800000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 860000 and 869999) THEN ((coalesce(servicenumber,variant)-860000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 900000 and 999999) THEN ((coalesce(servicenumber,variant)-900000)/100)*100
-            ELSE null END as trainnumber
-$$ LANGUAGE SQL;
-
-CREATE OR REPLACE FUNCTION 
-line_id(companynumber integer, transmode varchar,servicenumber integer,variant integer, beginstation varchar,endstation varchar) RETURNS varchar AS $$
-SELECT CASE WHEN (route(servicenumber,variant) IS NOT NULL) THEN concat_ws(':',companynumber,transmode,route(servicenumber,variant))
-            ELSE concat_ws(':',companynumber,transmode,least(beginstation,endstation),greatest(beginstation,endstation))
-            END as line_id
-$$ LANGUAGE SQL;
-CREATE OR REPLACE FUNCTION 
-line_id(companynumber integer, transmode varchar,servicenumber integer,variant integer, stops varchar[]) RETURNS varchar AS $$
-SELECT CASE WHEN (route(servicenumber,variant) IS NOT NULL) THEN concat_ws(':',companynumber,transmode,route(servicenumber,variant))
-            ELSE concat_ws(':',companynumber,transmode,least(stops[array_lower(stops,1)],stops[array_upper(stops,1)]),greatest(stops[array_lower(stops,1)],stops[array_upper(stops,1)]))
-            END as line_id
-$$ LANGUAGE SQL;
-
-CREATE VIEW timetable as (
-SELECT line_id(companynumber,transmode,servicenumber,variant,array_agg(station) over (PARTITION BY serviceid,coalesce(servicenumber,variant))) as line_id,
-companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,row_number() over(PARTITION BY serviceid,transmode,coalesce(servicenumber,variant) ORDER BY idx ASC) as stoporder,arrivaltime,departuretime,station,arrivalplatform,departureplatform,
-md5(string_agg(station||':'||coalesce(departureplatform,'0')||':'||coalesce(arrivalplatform,'0')||':'||attrs::text,'>') over (PARTITION BY serviceid,coalesce(servicenumber,variant))) as patterncode,attrs,
-(not (ARRAY['NUIT']::varchar[] <@ attrs)) as foralighting,
-(not (ARRAY['NIIN']::varchar[] <@ attrs)) as forboarding
-FROM (
-SELECT companynumber,serviceid,v.footnote,servicenumber,variant,servicename,transmode,idx,departuretime as 
-arrivaltime,departuretime,station,departure as arrivalplatform,departure as departureplatform,attrs
-FROM timetable_service as s LEFT JOIN timetable_stop USING (serviceid) LEFT JOIN timetable_platform USING (serviceid,station,idx) LEFT JOIN 
-timetable_validity as v USING (serviceid)
-     LEFT JOIN (select serviceid,transmode,firststop,firststop as idx from timetable_transport) as timetable_transport 
-USING (serviceid,idx)
-     LEFT JOIN (select serviceid,array_agg(code) as attrs,generate_series(firststop::int,laststop::int) as idx from timetable_attribute GROUP BY 
-serviceid,idx) as timetable_attribute USING (serviceid,idx)
-WHERE idx = s.firststop
-UNION
-SELECT 
-companynumber,serviceid,v.footnote,servicenumber,variant,servicename,transmode,idx,coalesce(arrivaltime,'00:00:00'),departuretime,station,arrival as 
-arrivalplatform,departure  as departureplatform,attrs
-FROM timetable_service as s LEFT JOIN timetable_stop USING (serviceid) LEFT JOIN timetable_platform USING (serviceid,station,idx) LEFT JOIN 
-timetable_validity as v USING (serviceid)
-     LEFT JOIN (select serviceid,transmode,generate_series(firststop::int,laststop::int) as idx from timetable_transport) as timetable_transport 
-USING (serviceid,idx)
-     LEFT JOIN (select serviceid,array_agg(code) as attrs,generate_series(firststop::int,laststop::int) as idx from timetable_attribute GROUP BY 
-serviceid,idx) as timetable_attribute USING (serviceid,idx)
-WHERE idx between s.firststop+1 and s.laststop-1
-UNION
-SELECT companynumber,serviceid,v.footnote,servicenumber,variant,servicename,transmode,idx,arrivaltime,arrivaltime as departuretime,station,arrival as 
-arrivalplatform,arrival as departureplatform,attrs
-FROM timetable_service as s LEFT JOIN timetable_stop USING (serviceid) LEFT JOIN timetable_platform USING (serviceid,station,idx) LEFT JOIN 
-timetable_validity as v USING (serviceid)
-     LEFT JOIN (select serviceid,transmode, laststop as idx from timetable_transport) as timetable_transport 
-USING (serviceid,idx)
-     LEFT JOIN (select serviceid,array_agg(code) as attrs,generate_series(firststop::int,laststop::int) as idx from timetable_attribute GROUP BY 
-serviceid,idx) as timetable_attribute USING (serviceid,idx)
-WHERE idx = s.laststop
-) as x
-order by serviceid,servicenumber,footnote,variant,stoporder);
-
-create table passtimes as (
-SELECT line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,station,platform,
-row_number() over(PARTITION BY line_id,serviceid,transmode,coalesce(servicenumber,variant) ORDER BY stoporder,arrivaltime ASC) as stoporder
-,arrivaltime,departuretime,md5(string_agg(station||':'||coalesce(platform,'0'),'>') OVER (PARTITION BY line_id,serviceid,transmode,coalesce(servicenumber,variant))) as patterncode
-,attrs,foralighting,forboarding
-FROM
-(SELECT
-line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,stoporder,station,departureplatform as platform,
-arrivaltime,departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,
-foralighting,forboarding
-FROM 
-timetable WHERE arrivalplatform = departureplatform or arrivalplatform is null
-UNION
-SELECT
-line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,stoporder,station,arrivalplatform as platform,
-arrivaltime,arrivaltime as departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,
-foralighting,false as forboarding
-FROM 
-timetable WHERE arrivalplatform <> departureplatform
-UNION
-SELECT
-line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,stoporder,station,departureplatform as platform,
-to32time(toseconds(arrivaltime,0)+15) as arrivaltime,departuretime,patterncode,CASE WHEN ('{NULL}' = attrs) THEN NULL ELSE attrs END as attrs,
-false as foralighting,forboarding
-FROM 
-timetable WHERE arrivalplatform <> departureplatform) as x
-ORDER BY line_id,servicenumber,variant,serviceid,stoporder
-);
-"""
-
 cache = {}
 
 def getFakePool(conn,stopbegin,stopend):
@@ -580,30 +455,30 @@ ORDER BY journeyref,pointref,onwardjourneyref,onwardpointref,transfer_type""")
 def getLines(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-(SELECT DISTINCT ON (p.line_id)
+(SELECT DISTINCT ON (line_id)
 p.line_id as operator_id,
 p.line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
-CASE WHEN (servicename is not null) THEN servicename||' '||begin_station.name||' <-> '||dest_station.name
+CASE WHEN (p.servicename is not null) THEN p.servicename||' '||begin_station.name||' <-> '||dest_station.name
      ELSE begin_station.name||' <-> '||dest_station.name||' '||transmode||route(servicenumber,variant) END AS name,
 'TRAIN' as transportmode,
 false as monitored
 FROM
-passtimes as p,trnsmode as m,company as c,
-(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder ASC) as begin,
-(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder DESC) as dest,
+passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant) ,trnsmode as m,company as c,
+(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx ASC) as begin,
+(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx DESC) as dest,
 station as begin_station,
 station as dest_station
 WHERE
 m.code = p.transmode and
 p.companynumber = c.company AND
-p.line_id = begin.line_id AND
-p.line_id = dest.line_id AND
+p.serviceid = begin.serviceid AND
+p.serviceid = dest.serviceid AND
 begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
 transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y')
-ORDER BY p.line_id,(servicenumber % 2 = 0),stoporder)
+ORDER BY line_id ASC,(servicenumber % 2 = 0),s.laststop DESC)
 UNION
 (SELECT DISTINCT ON (p.line_id)
 p.line_id as operator_id,
@@ -618,8 +493,12 @@ CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y')) THEN 'BUS'
 false as monitored
 FROM
 trnsmode as m,passtimes as p,company as c,
-(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder ASC) as begin,
-(select distinct on (line_id) line_id,station from passtimes order by line_id,stoporder DESC) as dest,
+(select distinct on (line_id) line_id,station from passtimes
+   WHERE serviceid in (SELECT DISTINCT ON (line_id) serviceid from passtimes order by line_id,stoporder DESC)
+    order by line_id DESC,stoporder ASC) as begin,
+(select distinct on (line_id) line_id,station from passtimes WHERE serviceid in (SELECT DISTINCT ON (line_id) serviceid from passtimes order by 
+line_id,stoporder DESC)
+   order by line_id DESC,stoporder DESC) as dest,
 station as begin_station,
 station as dest_station
 WHERE
