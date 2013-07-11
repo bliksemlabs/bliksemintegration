@@ -118,14 +118,14 @@ def write_string_table(strings) :
     return loc
 
 # make this into a method on a Header class 
-struct_header = Struct('8s13i')
+struct_header = Struct('8s14i')
 def write_header () :
     """ Write out a file header containing offsets to the beginning of each subsection. 
     Must match struct transit_data_header in transitdata.c """
     out.seek(0)
     htext = "TTABLEV1"
     packed = struct_header.pack(htext, nstops, nroutes, loc_stops, loc_routes, loc_route_stops, 
-        loc_stop_times, loc_stop_routes, loc_transfers, 
+        loc_timedemandgroups, loc_trips, loc_stop_routes, loc_transfers, 
         loc_stop_ids, loc_route_ids, loc_trip_ids, loc_trip_active, loc_route_active)
     out.write(packed)
 
@@ -260,50 +260,49 @@ def time_string_from_seconds(sec) :
     #if t.tm_mday > 0 :
     return time.strftime('day %d %H:%M:%S', t)
 
-# what we are calling routes here are TripBundles in gtfsdb
-print "saving the stop times for each trip of each route"
-# In the full NL dataset only about half of route (RAPTOR sense) have any dwells at all.
-# Rather than try to do some intense bit-twiddling time packing on all routes, we'll just 
-# check ahead of time whether each route has dwells or not, store separate arrivals and 
-# departures table offsets, which point to the same location if the route has no dwells. This
-# should achieve about 25% space savings with very simple implementation.
-# The problem is that this gets in the way of using the address of the next route block as a termination condition for loops.
-# The pointer arithmetic would need to be replaced with array indexing (this has now been done, so the change can be made).
-write_text_comment("STOP TIMES")
-loc_stop_times = tell()
-stop_times_offsets = []
-stoffset = 0
+
+print "saving a list of timedemandgroups"
+write_text_comment("TIMEDEMANDGROUPS")
+loc_timedemandgroups = tell()
+offset = 0
+timedemandgroups_offsets = {}
+timedemandgroup_t = Struct('IH')
+for timedemandgroupref, times in db.gettimepatterns():
+    timedemandgroups_offsets[timedemandgroupref] = offset
+    for totaldrivetime, stopwaittime in times:
+        out.write(timedemandgroup_t.pack(totaldrivetime, stopwaittime))
+        offset += 1
+
+
+print "saving a list of trips"
+write_text_comment("TRIPS BY ROUTE")
+loc_trips = tell()
+toffset = 0
+trips_offsets = []
+trip_t = Struct('IH')
+
 all_trip_ids = []
 trip_ids_offsets = [] # also serves as offsets into per-trip "service active" bitfields
 tioffset = 0
-crazy_threshold = 60 * 60 * 24 * 1.3 
 for idx, route in enumerate(route_for_idx) :
     if idx > 0 and idx % 1000 == 0 :
         print 'wrote %d routes' % idx
         tell()
-    # record the offset into the stop_times and trip_ids arrays for each trip block (route)
-    stop_times_offsets.append(stoffset)
+    # record the offset into the trip and trip_ids arrays for each trip block (route)
+    trips_offsets.append(toffset)
     trip_ids_offsets.append(tioffset)
     trip_ids = route.sorted_trip_ids()
     # print idx, route, len(trip_ids)
-    for arrival_time, departure_time in db.fetch_stop_times(trip_ids) :
+    for timedemandgroupref, first_departure in db.fetch_timedemandgroups(trip_ids) :
         # 2**16 / 60 / 60 is only 18 hours
         # by right-shifting all times one bit we get 36 hours (1.5 days) at 2 second resolution
-        if departure_time < arrival_time :
-            print "negative dwell time"
-            # do not write UNREACHABLE in util.h because this may cause problems
-            write_2ushort(0xFFF0 - 1, 0xFFF0 - 1) 
-        elif departure_time > crazy_threshold :
-            print 'suspect departure time:', departure_time, time_string_from_seconds(departure_time)
-            write_2ushort(0xFFF0 - 1, 0xFFF0 - 1) 
-        else :
-            write_2ushort(arrival_time >> 1, departure_time >> 1) 
-        stoffset += 1 
+	out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 1))
+        toffset += 1 
     all_trip_ids.extend(trip_ids)
     tioffset += len(trip_ids)
-stop_times_offsets.append(stoffset) # sentinel
+trips_offsets.append(toffset) # sentinel
 trip_ids_offsets.append(tioffset) # sentinel
-assert len(stop_times_offsets) == nroutes + 1
+assert len(trips_offsets) == nroutes + 1
 assert len(trip_ids_offsets) == nroutes + 1
 
 print "saving a list of routes serving each stop"
@@ -333,13 +332,10 @@ write_text_comment("TRANSFERS BY STOP")
 loc_transfers = tell()
 offset = 0
 transfers_offsets = []
-query = """
-select from_stop_id, to_stop_id, transfer_type, min_transfer_time
-from transfers where from_stop_id = ?"""
 struct_2i = Struct('if')
 for from_idx, from_sid in enumerate(stop_id_for_idx) :
     transfers_offsets.append(offset)
-    for from_sid, to_sid, ttype, ttime in db.execute(query, (from_sid,)) :
+    for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid) :
         if ttime == None :
             continue # skip non-time/non-distance transfers for now
         to_idx = idx_for_stop_id[to_sid]
@@ -358,8 +354,8 @@ for stop in zip (stop_routes_offsets, transfers_offsets) :
 print "saving route indexes"
 write_text_comment("ROUTE STRUCTS")
 loc_routes = tell()
-route_t = Struct('iiiii') # change to unsigned
-route_t_fields = [route_stops_offsets, stop_times_offsets, trip_ids_offsets, route_n_stops, route_n_trips]
+route_t = Struct('iiii') # change to unsigned
+route_t_fields = [route_stops_offsets, trip_ids_offsets, route_n_stops, route_n_trips]
 # check that all list lengths match the total number of routes. 
 for l in route_t_fields :
     # the extra last route is a sentinel so we can derive list lengths for the last true route.
