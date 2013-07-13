@@ -55,7 +55,7 @@ def getOperator():
            }
 
 def import_zip(path,filename,version):
-    validfrom = '2013-07-13'
+    validfrom = '2013-07-21'
     validthru = '2014-01-04'
     meta,conn = load(path,filename)
     cur = conn.cursor()
@@ -78,12 +78,12 @@ def import_zip(path,filename,version):
         data['STOPPOINT'] = getStopPoints(conn)
         data['STOPAREA'] = getStopAreas(conn)
         data['AVAILABILITYCONDITION'] = getAvailabilityConditionsFromCalendars(conn,validfrom)
-        data['JOURNEY'] = []
-        for journey in getJourneysFromPujo(conn):
+        data['JOURNEY'] = {}
+        for key,journey in getJourneysFromPujo(conn).items():
             if journey['availabilityconditionref'] not in data['AVAILABILITYCONDITION']:
                 logging.warning('Servicecalendar %s missing for %s' % (journey['availabilityconditionref'],journey['operator_id']))
             else:
-                data['JOURNEY'].append(journey)
+                data['JOURNEY'][key] = journey
         data['PRODUCTCATEGORY'] = getBISONproductcategories()
         data['ADMINISTRATIVEZONE'] = getAdministrativeZones(conn)
         data['TIMEDEMANDGROUP'] = getTimeDemandGroups(conn)
