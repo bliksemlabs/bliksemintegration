@@ -473,11 +473,12 @@ companynumber = 960 AND
 serviceid in (select serviceid from timetable_transport where transmode = 'ES');
 
 CREATE VIEW timetable as (
-SELECT line_id(companynumber,transmode,servicenumber,variant,array_agg(station) over (PARTITION BY serviceid,coalesce(servicenumber,variant))) as 
-line_id,
+SELECT
+line_id(companynumber,transmode,servicenumber,variant,array_agg(station) over (PARTITION BY serviceid,transmode,coalesce(servicenumber,variant) ORDER 
+BY idx range between unbounded preceding and unbounded following)) as line_id,
 companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,row_number() over(PARTITION BY 
 serviceid,transmode,coalesce(servicenumber,variant) ORDER BY idx ASC) as 
-stoporder,arrivaltime,departuretime,station,arrivalplatform,departureplatform,
+stoporder,arrivaltime,CASE WHEN (stoptype = 'LAST') THEN arrivaltime ELSE departuretime END as departuretime,station,arrivalplatform,departureplatform,
 md5(string_agg(station||':'||coalesce(departureplatform,'0')||':'||coalesce(arrivalplatform,'0')||':'||attrs::text,'>') over (PARTITION BY 
 serviceid,coalesce(servicenumber,variant))) as patterncode,attrs,
 ((not (ARRAY['NUIT']::varchar[] <@ attrs)) and stoptype <> 'FIRST') as foralighting,
