@@ -350,4 +350,5 @@ def load(path,filename):
     cur =  conn.cursor()
     cur.execute(schema)
     meta = importzip(conn,zip)
+    checkUsrstopPoint(conn)
     return (meta,conn)

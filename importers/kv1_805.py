@@ -572,6 +572,19 @@ def importzip(conn,zipfile):
     cur.close()
     return meta
 
+def checkUsrstopPoint(conn):
+    cur = conn.cursor()
+    cur.execute("""
+select town,name,userstopcode from usrstop as u left join point as p on (u.version = p.version and u.userstopcode = p.pointcode) where pointcode is 
+null;""")
+    rows = cur.fetchall()
+    if len(rows) == 0:
+       return False
+    res = ''
+    for row in rows:
+        res += ', '.join(row)+'\n'
+    raise Exception('USRSTOPs without POINT\n'+res)
+
 def load(path,filename):
     zip = zipfile.ZipFile(path+'/'+filename,'r')
     if 'Csv.zip' in zip.namelist():
@@ -581,4 +594,5 @@ def load(path,filename):
     cur =  conn.cursor()
     cur.execute(schema)
     meta = importzip(conn,zip)
+    checkUsrstopPoint(conn)
     return (meta,conn)
