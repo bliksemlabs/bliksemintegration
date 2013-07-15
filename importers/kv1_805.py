@@ -434,8 +434,11 @@ getout as foralighting,
 CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false 
      ELSE getin END as forboarding,
 0 as distancefromstartroute,
-0 as fareunitspassed
-FROM jopatili as j  LEFT JOIN dest USING (version,destcode) LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = 
+coalesce(sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode
+                                        ORDER BY j.version,j.dataownercode, lineplanningnumber, journeypatterncode, timinglinkorder
+                                        ROWS between UNBOUNDED PRECEDING and 1 PRECEDING),0) as fareunitspassed
+FROM jopatili as j LEFT JOIN link as l using (version,dataownercode,userstopcodebegin,userstopcodeend)
+                   LEFT JOIN dest USING (version,destcode) LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = 
 j.userstopcodebegin)
 UNION (
 SELECT DISTINCT ON (j.version,j.dataownercode,lineplanningnumber,journeypatterncode)
@@ -454,8 +457,9 @@ NULL as requeststop,
 getout as foralighting,
 false as forboarding,
 0 as distancefromstartroute,
-0 as fareunitspassed
-FROM jopatili as j LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = j.userstopcodeend)
+sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode) as fareunitspassed
+FROM jopatili as j LEFT JOIN link as l using (version,dataownercode,userstopcodebegin,userstopcodeend)
+                   LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = j.userstopcodeend)
 ORDER BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
 ORDER BY journeypatternref,pointorder
 """)
@@ -507,7 +511,7 @@ ORDER BY version, dataownercode, organizationalunitcode, schedulecode, schedulet
     journeys = {}
     for row in cur.fetchall():
         row.update(timedemandGroupRefForJourney[row['operator_id']])
-        journwys[row['operator_id']] = row
+        journeys[row['operator_id']] = row
     cur.close()
     return journeys
 
