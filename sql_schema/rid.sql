@@ -194,7 +194,7 @@ create table StopPoint(
     platformcode varchar(25)
 );
 
-CREATE VIEW scheduledstoppoint AS (SELECT id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone,stopcode,platformcode 
+CREATE VIEW scheduledstoppoint AS (SELECT id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone,platformcode 
 FROM stoppoint where isscheduled = true);
 
 create table PointInJourneyPattern(
