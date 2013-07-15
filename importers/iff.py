@@ -466,8 +466,8 @@ CASE WHEN (p.servicename is not null) THEN p.servicename||' '||begin_station.nam
 false as monitored
 FROM
 passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant) ,trnsmode as m,company as c,
-(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx ASC) as begin,
-(select distinct on (serviceid) serviceid,idx,station from timetable_stop order by serviceid,idx DESC) as dest,
+(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder ASC) as begin,
+(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder DESC) as dest,
 station as begin_station,
 station as dest_station
 WHERE
@@ -478,7 +478,7 @@ p.serviceid = dest.serviceid AND
 begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
 transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y')
-ORDER BY line_id ASC,(servicenumber % 2 = 0),s.laststop DESC)
+ORDER BY line_id ASC,(servicenumber % 2 = 0),dest.stoporder DESC)
 UNION
 (SELECT DISTINCT ON (p.line_id)
 p.line_id as operator_id,
