@@ -5,7 +5,7 @@ from math import sqrt,fabs,floor
 def distance_between (x1,y1,x2,y2):
     return fabs(sqrt( (x2 - x1)**2 + (y2 - y1)**2 ))
 
-def getlocation(cur,version,userstopcode):
+def getlocation(conn,version,userstopcode):
     cur = conn.cursor()
     cur.execute("""SELECT locationx_ew::integer,locationy_ns::integer FROM point WHERE version = %s and pointcode = %s""",[version,userstopcode])
     return cur.fetchone()
