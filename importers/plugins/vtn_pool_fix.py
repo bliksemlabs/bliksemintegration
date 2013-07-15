@@ -44,7 +44,6 @@ def set_beginend(conn,pool,userstopcodebegin,userstopcodeend,distance):
             cur = conn.cursor()
             cur.execute("""INSERT INTO POOL VALUES ('POOL',%s,'I','VTN',%s,%s,%s,'VTN',%s,%s,NULL,NULL,NULL)""",
                            [version,userstopcodebegin,userstopcodeend,linkvalidfrom,userstopcodeend,distance])
-            print pool
     
 def fix_pool(conn):
     cur = conn.cursor()
