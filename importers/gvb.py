@@ -158,4 +158,7 @@ def sync():
     for f in index:
         if not version_imported(':'.join(['GVB',f['key'],f['dataownerversion']])):
             logger.info('Import file %s version %s' % (f['filename'],str(f['dataownerversion'])))
-            download(url_gvb+f['filename'],f['filename'],f)
+            try:
+                download(url_gvb+f['filename'],f['filename'],f)
+            except Exception as e:
+                print e
