@@ -100,6 +100,5 @@ pl.version = %s""",[userstopcodebegin,userstopcodeend,version])
                 i = len(clean_pool)-j-1
                 if i > 0 and clean_pool[i][5] < clean_pool[i-1][5]:
                     clean_pool[i-1][5] = clean_pool[i][5]-1
-            print clean_pool
         for p in clean_pool[1:-1]:
             cur.execute("update pool set distancesincestartoflink = %s where version = %s and userstopcodebegin = %s and userstopcodeend = %s and pointcode = %s",[p[5],p[0],p[2],p[3],p[4]])
