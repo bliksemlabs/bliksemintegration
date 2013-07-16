@@ -328,3 +328,20 @@ INSERT INTO transportmode VALUES ('METRO','METRO',1);
 INSERT INTO transportmode VALUES ('TRAIN','TRAIN',2);
 INSERT INTO transportmode VALUES ('BUS','BUS',3);
 INSERT INTO transportmode VALUES ('BOAT','BOAT',4);
+
+create table rail_fare (
+    station varchar(255),
+    onwardstation varchar(255),
+    fare_units integer,
+    primary key(station,onwardstation)
+);
+
+create table rail_fare_prices (
+    fare_units integer primary key,
+    secondfull varchar(6),
+    second20 varchar(6),
+    second40 varchar(6),
+    firstfull varchar(6),
+    first20 varchar(6),
+    first40 varchar(6)
+);
