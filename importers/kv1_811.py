@@ -88,6 +88,91 @@ ORDER BY pointorder
     finally:
         cur.close()
 
+def getJourneyPatterns(routeRefForPattern,conn,routes):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    journeypatterns = {}
+    cur.execute("""
+SELECT
+jopa.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as operator_id,
+NULL as routeref,
+direction as directiontype,
+destinationdisplayref
+FROM jopa left join ( SELECT DISTINCT ON (version, dataownercode, lineplanningnumber, journeypatterncode)
+			version, dataownercode, lineplanningnumber, journeypatterncode,dataownercode||':'||destcode as destinationdisplayref
+			FROM jopatili
+			ORDER BY version, dataownercode, lineplanningnumber, journeypatterncode,timinglinkorder ) as jopatili 
+                    USING (version, dataownercode, lineplanningnumber, journeypatterncode)""")
+    for row in cur.fetchall():
+        journeypatterns[row['operator_id']] = row
+        journeypatterns[row['operator_id']]['POINTS'] = []
+        row['routeref'] = routeRefForPattern[row['operator_id']]
+    cur.execute("""
+SELECT
+j.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as journeypatternref,
+cast(timinglinkorder  as integer) as pointorder,
+null as privatecode,
+lineplanningnumber||':'||journeypatterncode as operator_id,
+j.dataownercode||':'||userstopcodebegin as pointref,
+j.dataownercode||':'||userstopcodeend as onwardpointref,
+j.dataownercode||':'||destcode as destinationdisplayref,
+NULL as noticeassignmentRef,
+j.dataownercode||':'||confinrelcode as administrativezoneref,
+istimingstop as iswaitpoint,
+0 as waittime,
+NULL as requeststop,
+getout as foralighting,
+CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false 
+     ELSE getin END as forboarding,
+0 as distancefromstartroute,
+coalesce(sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode
+                                        ORDER BY j.version,j.dataownercode, lineplanningnumber, journeypatterncode, timinglinkorder
+                                        ROWS between UNBOUNDED PRECEDING and 1 PRECEDING),0) as fareunitspassed
+FROM jopatili as j LEFT JOIN line USING (version,dataownercode,lineplanningnumber)
+                   LEFT JOIN link as l USING (version,dataownercode,userstopcodebegin,userstopcodeend,transporttype)
+                   LEFT JOIN dest USING (version,destcode) LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = 
+j.userstopcodebegin)
+UNION (
+SELECT DISTINCT ON (j.version,j.dataownercode,lineplanningnumber,journeypatterncode)
+j.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as journeypatternref,
+cast(timinglinkorder+1 as integer) as pointorder,
+null as privatecode,
+lineplanningnumber||':'||journeypatterncode as operator_id,
+j.dataownercode||':'||userstopcodeend as pointref,
+NULL as onwardpointref,
+j.dataownercode||':'||destcode as destinationdisplayref,
+NULL as noticeassignmentRef,
+j.dataownercode||':'||confinrelcode as administrativezoneref,
+istimingstop as iswaitpoint,
+0 as waittime,
+NULL as requeststop,
+getout as foralighting,
+false as forboarding,
+0 as distancefromstartroute,
+sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode) as fareunitspassed
+FROM jopatili as j LEFT JOIN line using (version,dataownercode,lineplanningnumber)
+                   LEFT JOIN link as l using (version,dataownercode,userstopcodebegin,userstopcodeend,transporttype)
+                   LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = j.userstopcodeend)
+ORDER BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
+ORDER BY journeypatternref,pointorder
+""")
+    distance = 0
+    patternref = None
+    for row in cur.fetchall():
+        if row['journeypatternref'] != patternref:
+            distance = 0
+            patternref = row['journeypatternref']
+        for point in routes[journeypatterns[row['journeypatternref']]['routeref']]['POINTS']:
+            if point['distancefromstart'] >= distance and point['privatecode'] == row['pointref']:
+                distance = point['distancefromstart']
+                row['distancefromstartroute'] = distance
+                break
+        if distance == 0 and int(row['pointorder']) > 3:
+            raise Exception('distancefromstartroute going wrong')
+        row['distancefromstartroute'] = distance
+        journeypatterns[row['journeypatternref']]['POINTS'].append(row)
+    cur.close()
+    return journeypatterns
+
 def load(path,filename):
     zip = zipfile.ZipFile(path+'/'+filename,'r')
     if 'Csv.zip' in zip.namelist():
