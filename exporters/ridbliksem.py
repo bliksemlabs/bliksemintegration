@@ -266,11 +266,11 @@ write_text_comment("TIMEDEMANDGROUPS")
 loc_timedemandgroups = tell()
 offset = 0
 timedemandgroups_offsets = {}
-timedemandgroup_t = Struct('IH')
+timedemandgroup_t = Struct('HH')
 for timedemandgroupref, times in db.gettimepatterns():
     timedemandgroups_offsets[timedemandgroupref] = offset
     for totaldrivetime, stopwaittime in times:
-        out.write(timedemandgroup_t.pack(totaldrivetime, stopwaittime))
+        out.write(timedemandgroup_t.pack(totaldrivetime >> 2, (totaldrivetime + stopwaittime) >> 2))
         offset += 1
 
 
@@ -295,8 +295,8 @@ for idx, route in enumerate(route_for_idx) :
     # print idx, route, len(trip_ids)
     for timedemandgroupref, first_departure in db.fetch_timedemandgroups(trip_ids) :
         # 2**16 / 60 / 60 is only 18 hours
-        # by right-shifting all times one bit we get 36 hours (1.5 days) at 2 second resolution
-	out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 1))
+        # by right-shifting all times two bits we get 72 hours (3 days) at 4 second resolution
+	out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 2))
         toffset += 1 
     all_trip_ids.extend(trip_ids)
     tioffset += len(trip_ids)
