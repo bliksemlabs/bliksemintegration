@@ -47,17 +47,6 @@ NULL as platformcode
 FROM stoparea
 ) to '/tmp/stops.txt' CSV HEADER;
 
-drop table transportmode;
-create table transportmode (
-    transportmode varchar(255) primary key,
-    route_type integer
-);
-insert into transportmode VALUES ('TRAM',0);
-insert into transportmode VALUES ('METRO',1);
-insert into transportmode VALUES ('TRAIN',2);
-insert into transportmode VALUES ('BUS',3);
-insert into transportmode VALUES ('BOAT',4);
-
 copy(
 SELECT 
 l.id as route_id,
