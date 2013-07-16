@@ -12,7 +12,7 @@ def secondssincemidnight(time):
   
 
 def getJourneys():
-    journeys = []
+    journeys = {}
     journey = { 'privatecode'              : 'OHM:',
                 'operator_id'              : 'OHM:',
                 'availabilityconditionref' : 'tussen',
@@ -35,15 +35,15 @@ def getJourneys():
         v['privatecode'] += str(secondssincemidnight(tijd))
         v['operator_id'] += str(secondssincemidnight(tijd))
         v['name'] = tijd
-        journeys.append(v)
+        journeys[str(len(journeys))] = v
         if tijd >= '15:00':
             w = deepcopy(v)
             w['availabilityconditionref'] = 'start'
-            journeys.append(w)
+            journeys[str(len(journeys))] = w
         else:
             w = deepcopy(v)
             w['availabilityconditionref'] = 'eind'
-            journeys.append(w)
+            journeys[str(len(journeys))] = w 
     for tijd in vertrektijden_terug:
         v = deepcopy(journey)
         v['journeypatternref'] = 'TERUG'
@@ -51,15 +51,15 @@ def getJourneys():
         v['privatecode'] += str(secondssincemidnight(tijd))
         v['operator_id'] += str(secondssincemidnight(tijd))
         v['name'] = tijd
-        journeys.append(v)
+        journeys[str(len(journeys))] = v
         if tijd >= '15:00':
             w = deepcopy(v)
             w['availabilityconditionref'] = 'start'
-            journeys.append(w)
+            journeys[str(len(journeys))] = w 
         else:
             w = deepcopy(v)
             w['availabilityconditionref'] = 'eind'
-            journeys.append(w)
+            journeys[str(len(journeys))] = w 
     return journeys
 
 def import_zip(path,filename,version):
@@ -203,5 +203,3 @@ def import_zip(path,filename,version):
     data['NOTICE'] = {}
     data['NOTICEGROUP'] = {}
     insert(data)
-
-import_zip(None,None,None)
