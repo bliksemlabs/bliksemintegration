@@ -227,7 +227,7 @@ create table Journey(
     productCategoryRef integer references productCategory (id) NOT NULL,
     noticeassignmentRef integer references noticeassignment(id),
     departuretime integer,
-    blockref integer,
+    blockref varchar(255),
     name varchar(255),
     lowfloor boolean,
     hasLiftOrRamp boolean,
