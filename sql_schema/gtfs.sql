@@ -54,7 +54,7 @@ o.operator_id as agency_id,
 publiccode as route_short_name,
 l.name as route_long_name,
 NULL as route_desc,
-route_type
+gtfs_route_type as route_type
 FROM 
 line as l LEFT JOIN operator as o ON (l.operatorref = o.id) LEFT JOIN transportmode using (transportmode)
 ) to '/tmp/routes.txt' CSV HEADER;
