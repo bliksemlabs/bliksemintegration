@@ -175,6 +175,10 @@ ORDER BY journeypatternref,pointorder
 
 def load(path,filename):
     zip = zipfile.ZipFile(path+'/'+filename,'r')
+    path_parts = zip.namelist()[0].split('/')
+    validfrom = None
+    if len(path_parts) > 0 and len(path_parts[0].split('-')) == 3:
+        validfrom = path_parts[0]
     if 'Csv.zip' in zip.namelist():
         zipfile.ZipFile.extract(zip,'Csv.zip','/tmp')
         zip = zipfile.ZipFile('/tmp/Csv.zip','r')
@@ -182,5 +186,7 @@ def load(path,filename):
     cur =  conn.cursor()
     cur.execute(schema)
     meta = importzip(conn,zip)
+    if validfrom is not None:
+        meta['validfrom'] = validfrom
     checkUsrstopPoint(conn)
     return (meta,conn)
