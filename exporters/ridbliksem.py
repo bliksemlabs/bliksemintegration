@@ -4,8 +4,7 @@ from datetime import timedelta, date
 from riddb import RIDdatabase
 
 if len(sys.argv) < 2 :
-    USAGE = """usage: timetable.py inputfile.gtfsdb 
-[calendar start date] 
+    USAGE = """usage: timetable.py inputfile.gtfsdb [calendar start date] 
     If a start date is provided in YYYY-MM-DD format, a calendar will be built for the 32 days following the given date. 
     Otherwise the service calendar will be analyzed and the month with the maximum number of running services will be used."""
     print USAGE
@@ -266,21 +265,20 @@ print "saving a list of timedemandgroups"
 write_text_comment("TIMEDEMANDGROUPS")
 loc_timedemandgroups = tell()
 offset = 0
-timegroups_written = {}
 timedemandgroups_offsets = {}
-timedemandgroup_t = Struct('IH')
+timedemandgroups_written = {}
+timedemandgroup_t = Struct('HH')
 for timedemandgroupref, times in db.gettimepatterns():
-    if str(times) in timegroups_written:
-        timedemandgroups_offsets[timedemandgroupref] = timegroups_written[str(times)]
+    if str(times) in timedemandgroups_written:
+        timedemandgroups_offsets[timedemandgroupref] = timedemandgroups_written[str(times)]
     else:
         timedemandgroups_offsets[timedemandgroupref] = offset
-        timegroups_written[str(times)] = offset
+        timedemandgroups_written[str(times)] = offset
         for totaldrivetime, stopwaittime in times:
-            out.write(timedemandgroup_t.pack(totaldrivetime, stopwaittime))
+            out.write(timedemandgroup_t.pack(totaldrivetime >> 2, (totaldrivetime + stopwaittime) >> 2))
             offset += 1
 
-del(timegroups_written)
-
+del(timedemandgroups_written)
 
 print "saving a list of trips"
 write_text_comment("TRIPS BY ROUTE")
@@ -303,8 +301,8 @@ for idx, route in enumerate(route_for_idx) :
     # print idx, route, len(trip_ids)
     for timedemandgroupref, first_departure in db.fetch_timedemandgroups(trip_ids) :
         # 2**16 / 60 / 60 is only 18 hours
-        # by right-shifting all times one bit we get 36 hours (1.5 days) at 2 second resolution
-	out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 1))
+        # by right-shifting all times two bits we get 72 hours (3 days) at 4 second resolution
+	out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 2))
         toffset += 1 
     all_trip_ids.extend(trip_ids)
     tioffset += len(trip_ids)
