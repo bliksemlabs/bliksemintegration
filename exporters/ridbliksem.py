@@ -4,7 +4,8 @@ from datetime import timedelta, date
 from riddb import RIDdatabase
 
 if len(sys.argv) < 2 :
-    USAGE = """usage: timetable.py inputfile.gtfsdb [calendar start date] 
+    USAGE = """usage: timetable.py inputfile.gtfsdb 
+[calendar start date] 
     If a start date is provided in YYYY-MM-DD format, a calendar will be built for the 32 days following the given date. 
     Otherwise the service calendar will be analyzed and the month with the maximum number of running services will be used."""
     print USAGE
@@ -265,13 +266,20 @@ print "saving a list of timedemandgroups"
 write_text_comment("TIMEDEMANDGROUPS")
 loc_timedemandgroups = tell()
 offset = 0
+timegroups_written = {}
 timedemandgroups_offsets = {}
 timedemandgroup_t = Struct('IH')
 for timedemandgroupref, times in db.gettimepatterns():
-    timedemandgroups_offsets[timedemandgroupref] = offset
-    for totaldrivetime, stopwaittime in times:
-        out.write(timedemandgroup_t.pack(totaldrivetime, stopwaittime))
-        offset += 1
+    if str(times) in timegroups_written:
+        timedemandgroups_offsets[timedemandgroupref] = timegroups_written[str(times)]
+    else:
+        timedemandgroups_offsets[timedemandgroupref] = offset
+        timegroups_written[str(times)] = offset
+        for totaldrivetime, stopwaittime in times:
+            out.write(timedemandgroup_t.pack(totaldrivetime, stopwaittime))
+            offset += 1
+
+del(timegroups_written)
 
 
 print "saving a list of trips"

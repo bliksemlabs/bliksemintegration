@@ -172,7 +172,7 @@ WHERE j.id = %s
         """ generator that takes a list of trip_ids 
         and returns all timedemandgroups in order for those trip_ids """
         for trip_id in trip_ids :
-            query = """SELECT timedemandgroupref,departuretime FROM journey WHERE journey.id = %s""" 
+            query = """SELECT journeypatternref||':'||timedemandgroupref,departuretime FROM journey WHERE journey.id = %s""" 
             c = self.conn.cursor()
             c.execute(query,[trip_id])
             for (timedemandgroupref,departuretime) in c.fetchall():
@@ -206,8 +206,15 @@ WHERE j.id = %s
     def gettimepatterns(self):
         cur = self.conn.cursor()
         cur.execute("""
-SELECT timedemandgroupref,array_agg(totaldrivetime||':'||stopwaittime::text ORDER BY pointorder) as timegroup
-FROM pointintimedemandgroup GROUP BY timedemandgroupref""")
+SELECT journeypatternref||':'||timedemandgroupref,array_agg(totaldrivetime||':'||stopwaittime::text ORDER BY pointorder) as timegroup
+FROM 
+(SELECT DISTINCT ON (journeypatternref,timedemandgroupref,pointorder) * 
+ FROM journey LEFT JOIN pointintimedemandgroup USING (timedemandgroupref)
+                       LEFT JOIN pointinjourneypattern USING (journeypatternref,pointorder)
+                       LEFT JOIN stoppoint ON (pointref = stoppoint.id)
+ WHERE isscheduled = true) as x
+GROUP BY journeypatternref,timedemandgroupref
+ORDER BY journeypatternref,timedemandgroupref""")
         res = cur.fetchall()
         for row in res:
             for i in range(len(row[1])):

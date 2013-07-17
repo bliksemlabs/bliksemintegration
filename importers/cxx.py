@@ -55,9 +55,9 @@ def getOperator():
            }
 
 def import_zip(path,filename,version):
-    validfrom = '2013-07-21'
     validthru = '2014-01-04'
     meta,conn = load(path,filename)
+    validfrom = meta['validfrom']
     cur = conn.cursor()
     cur.execute("""create index on pool(userstopcodebegin,userstopcodeend);""")
     cur.close()
