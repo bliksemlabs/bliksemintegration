@@ -62,7 +62,11 @@ struct_1I = Struct('I') # a single UNSIGNED int
 def writeint(x) :
     out.write(struct_1I.pack(x));
 
-struct_2H = Struct('HH') # a single UNSIGNED short 
+struct_1H = Struct('H') # a single UNSIGNED short
+def writeshort(x) :
+    out.write(struct_1H.pack(x));
+
+struct_2H = Struct('HH') # a two UNSIGNED shorts
 def write_2ushort(x, y) : 
     out.write(struct_2H.pack(x, y));
         
@@ -125,7 +129,7 @@ def write_header () :
     out.seek(0)
     htext = "TTABLEV1"
     packed = struct_header.pack(htext, nstops, nroutes, loc_stops, loc_routes, loc_route_stops, 
-        loc_timedemandgroups, loc_trips, loc_stop_routes, loc_transfers, 
+        loc_timedemandgroups, loc_trips, loc_stop_routes, loc_transfer_target_stops, loc_transfer_dist_meters, 
         loc_stop_ids, loc_route_ids, loc_trip_ids, loc_trip_active, loc_route_active)
     out.write(packed)
 
@@ -302,7 +306,7 @@ for idx, route in enumerate(route_for_idx) :
     for timedemandgroupref, first_departure in db.fetch_timedemandgroups(trip_ids) :
         # 2**16 / 60 / 60 is only 18 hours
         # by right-shifting all times two bits we get 72 hours (3 days) at 4 second resolution
-	out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 2))
+        out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 2))
         toffset += 1 
     all_trip_ids.extend(trip_ids)
     tioffset += len(trip_ids)
@@ -333,19 +337,34 @@ stop_routes_offsets.append(offset) # sentinel
 assert len(stop_routes_offsets) == nstops + 1
 del stop_routes
 
-print "saving transfers (footpaths)"
+print "saving transfer stops (footpaths)"
 write_text_comment("TRANSFERS BY STOP")
-loc_transfers = tell()
+loc_transfer_target_stops = tell()
 offset = 0
 transfers_offsets = []
-struct_2i = Struct('If')
 for from_idx, from_sid in enumerate(stop_id_for_idx) :
     transfers_offsets.append(offset)
     for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid) :
         if ttime == None :
             continue # skip non-time/non-distance transfers for now
         to_idx = idx_for_stop_id[to_sid]
-        out.write(struct_2i.pack(to_idx, float(ttime))) # must convert time/dist
+        out.writeint(to_idx)
+        offset += 1
+transfers_offsets.append(offset) # sentinel
+assert len(transfers_offsets) == nstops + 1
+
+print "saving transfer distances (footpaths)"
+write_text_comment("TRANSFERS BY DISTANCE")
+loc_transfer_target_stops = tell()
+offset = 0
+transfers_offsets = []
+for from_idx, from_sid in enumerate(stop_id_for_idx) :
+    transfers_offsets.append(offset)
+    for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid) :
+        if ttime == None :
+            continue # skip non-time/non-distance transfers for now
+        to_idx = idx_for_stop_id[to_sid]
+        out.writeshort(ttime)
         offset += 1
 transfers_offsets.append(offset) # sentinel
 assert len(transfers_offsets) == nstops + 1
