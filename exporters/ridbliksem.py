@@ -10,7 +10,7 @@ if len(sys.argv) < 2 :
     print USAGE
     exit(1)
 
-db = RIDdatabase('rid')    
+db = RIDdatabase('ridprod')    
 
 out = open("./timetable.dat", "wb")
 stops_out = open("./stops", "wb") # ID <-> StopName map for the geocoder
@@ -118,7 +118,7 @@ def write_string_table(strings) :
     return loc
 
 # make this into a method on a Header class 
-struct_header = Struct('8s14i')
+struct_header = Struct('8s14I')
 def write_header () :
     """ Write out a file header containing offsets to the beginning of each subsection. 
     Must match struct transit_data_header in transitdata.c """
@@ -285,7 +285,7 @@ write_text_comment("TRIPS BY ROUTE")
 loc_trips = tell()
 toffset = 0
 trips_offsets = []
-trip_t = Struct('IH')
+trip_t = Struct('II') # This is a padding fuckup
 
 all_trip_ids = []
 trip_ids_offsets = [] # also serves as offsets into per-trip "service active" bitfields
@@ -353,14 +353,14 @@ assert len(transfers_offsets) == nstops + 1
 print "saving stop indexes"
 write_text_comment("STOP STRUCTS")
 loc_stops = tell()
-struct_2i = Struct('ii')
+struct_2i = Struct('II')
 for stop in zip (stop_routes_offsets, transfers_offsets) :
     out.write(struct_2i.pack(*stop));
 
 print "saving route indexes"
 write_text_comment("ROUTE STRUCTS")
 loc_routes = tell()
-route_t = Struct('iiii') # change to unsigned
+route_t = Struct('IIII') # change to unsigned
 route_t_fields = [route_stops_offsets, trip_ids_offsets, route_n_stops, route_n_trips]
 # check that all list lengths match the total number of routes. 
 for l in route_t_fields :
