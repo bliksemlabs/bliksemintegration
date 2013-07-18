@@ -355,7 +355,7 @@ assert len(transfers_offsets) == nstops + 1
 
 print "saving transfer distances (footpaths)"
 write_text_comment("TRANSFERS BY DISTANCE")
-loc_transfer_target_stops = tell()
+loc_transfer_dist_meters = tell()
 offset = 0
 transfers_offsets = []
 for from_idx, from_sid in enumerate(stop_id_for_idx) :
