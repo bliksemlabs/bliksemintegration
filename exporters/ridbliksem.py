@@ -122,7 +122,7 @@ def write_string_table(strings) :
     return loc
 
 # make this into a method on a Header class 
-struct_header = Struct('8s14I')
+struct_header = Struct('8s15I')
 def write_header () :
     """ Write out a file header containing offsets to the beginning of each subsection. 
     Must match struct transit_data_header in transitdata.c """
