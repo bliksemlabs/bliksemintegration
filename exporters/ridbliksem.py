@@ -364,7 +364,9 @@ for from_idx, from_sid in enumerate(stop_id_for_idx) :
         if ttime == None :
             continue # skip non-time/non-distance transfers for now
         to_idx = idx_for_stop_id[to_sid]
-        writeshort(ttime)
+        writeshort((int(ttime) + 8) << 4) # must convert time/dist
+                                          # we round to the nearest 16
+                                          # by truncating towards zero
         offset += 1
 transfers_offsets.append(offset) # sentinel
 assert len(transfers_offsets) == nstops + 1
