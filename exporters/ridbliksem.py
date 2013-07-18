@@ -10,7 +10,7 @@ if len(sys.argv) < 2 :
     print USAGE
     exit(1)
 
-db = RIDdatabase('ridprod')    
+db = RIDdatabase('ridacc')    
 
 out = open("./timetable.dat", "wb")
 stops_out = open("./stops", "wb") # ID <-> StopName map for the geocoder
@@ -338,7 +338,7 @@ write_text_comment("TRANSFERS BY STOP")
 loc_transfers = tell()
 offset = 0
 transfers_offsets = []
-struct_2i = Struct('if')
+struct_2i = Struct('If')
 for from_idx, from_sid in enumerate(stop_id_for_idx) :
     transfers_offsets.append(offset)
     for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid) :
@@ -421,7 +421,6 @@ print '(%d / %d bitmasks were zero)' % ( n_zeros, len(all_trip_ids) )
 print "reached end of timetable file"
 write_text_comment("END TTABLEV1")
 loc_eof = tell()
-
 print "rewinding and writing header... ",
 write_header()
    
