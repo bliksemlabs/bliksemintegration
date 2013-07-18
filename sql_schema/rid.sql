@@ -191,7 +191,9 @@ create table StopPoint(
     rd_x integer,
     rd_y integer, 
     timezone varchar(255),
-    platformcode varchar(25)
+    platformcode varchar(25),
+    the_geom geometry(Point,4326),
+    the_geom_rd geometry (Point,28992)
 );
 
 CREATE VIEW scheduledstoppoint AS (SELECT id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone,platformcode 
@@ -314,10 +316,6 @@ ON a = b
 WHERE usedate = '1';
 $$ LANGUAGE SQL; 
 
--- Indices
-create index on journey(journeypatternref);
-create index on journey(timedemandgroupref);
-
 CREATE table transportmode (
     transportmode varchar(255), 
     bison_transporttype varchar(255), 
@@ -345,3 +343,13 @@ create table rail_fare_prices (
     first20 varchar(6),
     first40 varchar(6)
 );
+
+--indices
+create index on journey(availabilityconditionref);
+create index on journey(journeypatternref);
+create index on journey(privatecode);
+create index on journey(timedemandgroupref);
+create index on stoppoint(operator_id);
+create index stoppoint_geom_gist on stoppoint USING gist(the_geom);
+create index stoppoint_geom_rd_gist on stoppoint USING gist(the_geom_rd);
+create index on pointinjourneypattern(pointref);
