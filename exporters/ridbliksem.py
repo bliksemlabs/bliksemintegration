@@ -2,6 +2,8 @@ import sys, struct, time
 from struct import Struct
 from datetime import timedelta, date
 from riddb import RIDdatabase
+import os
+import sqlite3
 
 if len(sys.argv) < 2 :
     USAGE = """usage: timetable.py inputfile.gtfsdb [calendar start date] 
@@ -10,7 +12,7 @@ if len(sys.argv) < 2 :
     print USAGE
     exit(1)
 
-db = RIDdatabase('ridacc')    
+db = RIDdatabase(sys.argv[1])    
 
 out = open("./timetable.dat", "wb")
 stops_out = open("./stops", "wb") # ID <-> StopName map for the geocoder
@@ -149,6 +151,16 @@ query = """
         from stops
         order by stop_id
         """
+os.remove('stops.db')
+conn = sqlite3.connect("stops.db")
+conn.text_factory = str
+cur = conn.cursor()
+cur.execute("""
+CREATE VIRTUAL TABLE stops_fts USING FTS4 (
+    stopindex integer primary key,
+    stopname TEXT
+);""")
+stopnames = set([])
 # Write timetable segment 0 : stop coordinates
 # (loop over all stop IDs in alphabetical order)
 for sid, name, lat, lon in db.stops() :
@@ -157,8 +169,14 @@ for sid, name, lat, lon in db.stops() :
     stop_name_for_idx.append(name)
     write2floats(lat, lon)
     stops_out.write(name+'\n')
+    if name not in stopnames:
+        stopnames.add(name)
+        cur.execute('INSERT INTO stops_fts VALUES (?,?)',(idx,name))
     idx += 1
 nstops = idx
+conn.commit()
+conn.close()
+del stopnames
 stops_out.close()
     
 print "building trip bundles"
@@ -227,11 +245,10 @@ for route in route_for_idx :
         # mostly trains with the service type (Sprinter, IC) in the long name field
         desc = long_name
     else : 
-        desc = '%s %s' % (modes[mode], short_name)
-        if long_name is not None :
-            desc += ' (%s)' % long_name
-    if (headsign is not None) :
-        desc = ';'.join([desc, headsign])
+        desc = '%s;%s' % (modes[mode], short_name)
+    if (headsign is None) :
+        headsign = ''
+    desc = ';'.join([desc, headsign])
     # print desc
     route_id_for_idx.append(desc)
 
