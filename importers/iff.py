@@ -324,8 +324,8 @@ NULL as administrativezoneref,
 p1.forboarding as iswaitpoint,
 0 as waittime,
 NULL as requeststop,
-p1.foralighting,
-p1.forboarding,
+coalesce(p1.foralighting,true),
+coalesce(p1.forboarding,true),
 0 as distancefromstartroute,
 0 as fareunitspassed
 FROM passtimes as p1 LEFT JOIN passtimes as p2 ON (p1.serviceid = p2.serviceid AND 
