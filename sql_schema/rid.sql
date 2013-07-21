@@ -212,8 +212,8 @@ create table PointInJourneyPattern(
     iswaitpoint boolean,
     waittime integer,
     requeststop boolean,
-    foralighting boolean,
-    forboarding boolean,
+    foralighting boolean NOT NULL,
+    forboarding boolean NOT NULL,
     distancefromstartroute integer,
     fareUnitsPassed integer,
     primary key (journeypatternref,pointorder)
@@ -319,13 +319,14 @@ $$ LANGUAGE SQL;
 CREATE table transportmode (
     transportmode varchar(255), 
     bison_transporttype varchar(255), 
-    gtfs_route_type int4
+    gtfs_route_type int4,
+    name varchar(255)
 );
-INSERT INTO transportmode VALUES ('TRAM','TRAM',0);
-INSERT INTO transportmode VALUES ('METRO','METRO',1);
-INSERT INTO transportmode VALUES ('TRAIN','TRAIN',2);
-INSERT INTO transportmode VALUES ('BUS','BUS',3);
-INSERT INTO transportmode VALUES ('BOAT','BOAT',4);
+INSERT INTO transportmode VALUES ('TRAM','TRAM',0,'Tram');
+INSERT INTO transportmode VALUES ('METRO','METRO',1,'Metro');
+INSERT INTO transportmode VALUES ('TRAIN','TRAIN',2,'Trein');
+INSERT INTO transportmode VALUES ('BUS','BUS',3,'Bus');
+INSERT INTO transportmode VALUES ('BOAT','BOAT',4,'Veer');
 
 create table rail_fare (
     station varchar(255),
