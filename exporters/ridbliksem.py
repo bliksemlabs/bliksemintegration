@@ -5,6 +5,8 @@ from riddb import RIDdatabase
 import os
 import sqlite3
 
+MAX_DISTANCE = 801
+
 if len(sys.argv) < 2 :
     USAGE = """usage: timetable.py inputfile.gtfsdb [calendar start date] 
     If a start date is provided in YYYY-MM-DD format, a calendar will be built for the 32 days following the given date. 
@@ -361,7 +363,7 @@ offset = 0
 transfers_offsets = []
 for from_idx, from_sid in enumerate(stop_id_for_idx) :
     transfers_offsets.append(offset)
-    for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid) :
+    for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid,maxdistance=MAX_DISTANCE):
         if ttime == None :
             continue # skip non-time/non-distance transfers for now
         to_idx = idx_for_stop_id[to_sid]
@@ -377,7 +379,7 @@ offset = 0
 transfers_offsets = []
 for from_idx, from_sid in enumerate(stop_id_for_idx) :
     transfers_offsets.append(offset)
-    for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid) :
+    for from_sid, to_sid, ttype, ttime in db.gettransfers(from_sid,maxdistance=MAX_DISTANCE):
         if ttime == None :
             continue # skip non-time/non-distance transfers for now
         to_idx = idx_for_stop_id[to_sid]
