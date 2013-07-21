@@ -105,9 +105,11 @@ ORDER BY service_id
         cur.close()
         return start_date, end_date
 
-    def gettransfers(self,from_stop_id):
+    def gettransfers(self,from_stop_id,maxdistance=None):
         cur = self.conn.cursor()
-        cur.execute("SELECT from_stop_id,to_stop_id,9,distance from transfers where from_stop_id = %s",[from_stop_id])
+        if maxdistance is None:
+            maxdistance = 999999
+        cur.execute("SELECT from_stop_id,to_stop_id,9,distance from transfers where from_stop_id = %s and distance < %s",[from_stop_id,maxdistance])
         res = cur.fetchall()
         cur.close()
         return res
@@ -209,7 +211,8 @@ WHERE j.id = %s
 SELECT journeypatternref||':'||timedemandgroupref,array_agg(totaldrivetime||':'||stopwaittime::text ORDER BY pointorder) as timegroup
 FROM 
 (SELECT DISTINCT ON (journeypatternref,timedemandgroupref,pointorder) * 
- FROM journey LEFT JOIN pointintimedemandgroup USING (timedemandgroupref)
+ FROM (select distinct timedemandgroupref,journeypatternref from journey) as journey 
+                       LEFT JOIN pointintimedemandgroup USING (timedemandgroupref)
                        LEFT JOIN pointinjourneypattern USING (journeypatternref,pointorder)
                        LEFT JOIN stoppoint ON (pointref = stoppoint.id)
  WHERE isscheduled = true) as x
