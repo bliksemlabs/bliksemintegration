@@ -129,7 +129,8 @@ def write_header () :
     out.seek(0)
     htext = "TTABLEV1"
     packed = struct_header.pack(htext, nstops, nroutes, loc_stops, loc_routes, loc_route_stops, 
-        loc_timedemandgroups, loc_trips, loc_stop_routes, loc_transfer_target_stops, loc_transfer_dist_meters, 
+        loc_timedemandgroups, loc_trip_stop_times_offset, loc_trip_first_departure, 
+        loc_stop_routes, loc_transfer_target_stops, loc_transfer_dist_meters, 
         loc_stop_ids, loc_route_ids, loc_trip_ids, loc_trip_active, loc_route_active)
     out.write(packed)
 
@@ -284,13 +285,13 @@ for timedemandgroupref, times in db.gettimepatterns():
 
 del(timedemandgroups_written)
 
-print "saving a list of trips"
-write_text_comment("TRIPS BY ROUTE")
-loc_trips = tell()
+print "saving a list of trip stop time offsets"
+write_text_comment("TRIP STOP TIME OFFSET BY ROUTE")
+loc_trip_stop_times_offset = tell()
 toffset = 0
 trips_offsets = []
-trip_t = Struct('II') # This is a padding fuckup
 
+first_departures = cStringIO.StringIO()
 all_trip_ids = []
 trip_ids_offsets = [] # also serves as offsets into per-trip "service active" bitfields
 tioffset = 0
@@ -306,7 +307,8 @@ for idx, route in enumerate(route_for_idx) :
     for timedemandgroupref, first_departure in db.fetch_timedemandgroups(trip_ids) :
         # 2**16 / 60 / 60 is only 18 hours
         # by right-shifting all times two bits we get 72 hours (3 days) at 4 second resolution
-        out.write(trip_t.pack(timedemandgroups_offsets[timedemandgroupref], first_departure >> 2))
+        writeint(timedemandgroups_offsets[timedemandgroupref])
+        first_departures.write(struct_1H.pack(first_departure >> 2))
         toffset += 1 
     all_trip_ids.extend(trip_ids)
     tioffset += len(trip_ids)
@@ -314,6 +316,12 @@ trips_offsets.append(toffset) # sentinel
 trip_ids_offsets.append(tioffset) # sentinel
 assert len(trips_offsets) == nroutes + 1
 assert len(trip_ids_offsets) == nroutes + 1
+
+print "saving a list of trip first departure"
+write_text_comment("TRIP FIRST DEPARTURE BY ROUTE")
+loc_trip_first_departure = tell()
+out.write(first_departures.getvalue())
+first_departures = None
 
 print "saving a list of routes serving each stop"
 write_text_comment("ROUTES BY STOP")
@@ -364,7 +372,7 @@ for from_idx, from_sid in enumerate(stop_id_for_idx) :
         if ttime == None :
             continue # skip non-time/non-distance transfers for now
         to_idx = idx_for_stop_id[to_sid]
-        writeshort((int(ttime) + 8) << 4) # must convert time/dist
+        writeshort((int(ttime) + 8) >> 4) # must convert time/dist
                                           # we round to the nearest 16
                                           # by truncating towards zero
         offset += 1
