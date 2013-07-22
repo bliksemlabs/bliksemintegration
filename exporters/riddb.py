@@ -109,7 +109,12 @@ ORDER BY service_id
         cur = self.conn.cursor()
         if maxdistance is None:
             maxdistance = 999999
-        cur.execute("SELECT from_stop_id,to_stop_id,9,distance from transfers where from_stop_id = %s and distance < %s",[from_stop_id,maxdistance])
+        cur.execute("""
+SELECT from_stop_id,to_stop_id,9,distance 
+FROM transfers
+WHERE from_stop_id = %s AND distance < %s
+ORDER BY from_stop_id,to_stop_id
+""",[from_stop_id,maxdistance])
         res = cur.fetchall()
         cur.close()
         return res
