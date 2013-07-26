@@ -1,7 +1,7 @@
 import urllib2
 
 #Database settings
-database_connect = "dbname='rid'"
+database_connect = "dbname='ridprod'"
 kv1_database_connect = "dbname='kv1tmp'"
 iff_database_connect = "dbname='ifftmp'"
 
