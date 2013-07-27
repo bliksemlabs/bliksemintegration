@@ -317,7 +317,7 @@ WHERE usedate = '1';
 $$ LANGUAGE SQL; 
 
 CREATE table transportmode (
-    transportmode varchar(255), 
+    transportmode primary key varchar(255), 
     bison_transporttype varchar(255), 
     gtfs_route_type int4,
     name varchar(255)
@@ -354,3 +354,4 @@ create index on stoppoint(operator_id);
 create index stoppoint_geom_gist on stoppoint USING gist(the_geom);
 create index stoppoint_geom_rd_gist on stoppoint USING gist(the_geom_rd);
 create index on pointinjourneypattern(pointref);
+create index on availabilityconditionday(validdate);
