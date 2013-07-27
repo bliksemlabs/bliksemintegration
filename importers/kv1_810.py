@@ -43,9 +43,10 @@ ORDER BY operator_id,pointorder
             else:
                 totaldrivetime += row['drivetime'] + stopwaittime
                 stopwaittime = row['stopwaittime']
-            m = md5.new()
-            m.update(str(points))
-            timedemandgroups[row['operator_id']]['operator_id'] = m.hexdigest()
+    for key,value in timedemandgroups.items():
+        m = md5.new()
+        m.update(str(value['POINTS']))
+        value['operator_id'] = m.hexdigest()
     return timedemandgroups
 
 def getAvailabilityConditionsFromCalendars(conn,validfrom):
