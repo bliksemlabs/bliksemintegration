@@ -27,7 +27,7 @@ def getOperator():
 def getMergeStrategies(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validdate) as fromdate FROM operday GROUP BY dataownercode
+SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate FROM schedvers
 """)
     rows = cur.fetchall()
     cur.close()
