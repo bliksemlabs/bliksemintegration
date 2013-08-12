@@ -27,6 +27,9 @@ def getOperator():
 def getMergeStrategies(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
+DELETE FROM OPERDAY as o WHERE validdate < (SELECT validfrom FROM schedvers as s WHERE s.schedulecode = o.schedulecode AND s.scheduletypecode = 
+o.scheduletypecode AND s.version = o.version AND s.organizationalunitcode = o.organizationalunitcode)""")
+    cur.execute("""
 SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate FROM schedvers
 """)
     rows = cur.fetchall()
@@ -55,7 +58,7 @@ def import_zip(path,filename,version):
         data['PRODUCTCATEGORY'] = getBISONproductcategories()
         data['ADMINISTRATIVEZONE'] = getAdministrativeZones(conn)
         timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroups(conn)
-        routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getFakePool805)
+        routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getPool805)
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'])
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn)
         data['NOTICEASSIGNMENT'] = {}
