@@ -193,10 +193,14 @@ create table StopPoint(
     timezone varchar(255),
     platformcode varchar(25),
     the_geom geometry(Point,4326),
-    the_geom_rd geometry (Point,28992)
+    the_geom_rd geometry (Point,28992),
+    visualimpairmentsuitable boolean,
+    restrictedmobilitysuitable boolean
 );
 
-CREATE VIEW scheduledstoppoint AS (SELECT id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone,platformcode 
+CREATE VIEW scheduledstoppoint AS (SELECT 
+id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone,platformcode,visualimpairmentsuitable,
+restrictedmobilitysuitable
 FROM stoppoint where isscheduled = true);
 
 create table PointInJourneyPattern(
