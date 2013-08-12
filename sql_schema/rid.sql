@@ -321,7 +321,7 @@ WHERE usedate = '1';
 $$ LANGUAGE SQL; 
 
 CREATE table transportmode (
-    transportmode primary key varchar(255), 
+    transportmode varchar(255) primary key, 
     bison_transporttype varchar(255), 
     gtfs_route_type int4,
     name varchar(255)
