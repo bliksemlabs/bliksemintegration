@@ -54,8 +54,8 @@ def getStopAreas(conn):
 SELECT
 a.dataownercode || ':' ||a.userstopareacode as operator_id,
 a.dataownercode || ':' ||a.userstopareacode as privatecode,
-CASE WHEN (a.name not like '%,%') THEN a.town||', '||a.name
-     ELSE a.name END AS name,
+CASE WHEN (a.name not like '%,%') THEN trim(both from a.town||', '||a.name)
+     ELSE trim(both from a.name) END AS name,
 a.town as town,
 CAST(CAST(ST_Y(the_geom) AS NUMERIC(9,6)) AS text) AS latitude,
 CAST(CAST(ST_X(the_geom) AS NUMERIC(8,6)) AS text) AS longitude
@@ -92,8 +92,8 @@ u.dataownercode||':'||userstopcode as operator_id,
 userstopcode as privatecode,
 coalesce(timingpointcode,userstopcode) as publiccode,
 u.dataownercode||':'||userstopareacode as stoparearef,
-CASE WHEN ((getin or getout) AND name not like '%,%') THEN town||', '||name
-     ELSE name END AS name,
+CASE WHEN ((getin or getout) AND name not like '%,%') THEN trim(both from town||', '||name)
+     ELSE trim(both from name) END AS name,
 town,
 (getin or getout) as isScheduled,
 CAST(CAST(ST_Y(the_geom) AS NUMERIC(9,6)) AS text) AS latitude,
@@ -536,7 +536,7 @@ def encodingof(dataownercode):
         return 'UTF-8'
 
 def metadata(schedule):
-    lines = schedule.split('\r\n')
+    lines = schedule.split('\n')
     if lines[0].split('|')[1] in versionheaders:
         firstline = 1
     else:
