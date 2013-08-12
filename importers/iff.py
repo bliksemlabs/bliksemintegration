@@ -324,8 +324,8 @@ NULL as administrativezoneref,
 p1.forboarding as iswaitpoint,
 0 as waittime,
 NULL as requeststop,
-coalesce(p1.foralighting,true),
-coalesce(p1.forboarding,true),
+coalesce(p1.foralighting,true) as foralighting,
+coalesce(p1.forboarding,true) as forboarding,
 0 as distancefromstartroute,
 0 as fareunitspassed
 FROM passtimes as p1 LEFT JOIN passtimes as p2 ON (p1.serviceid = p2.serviceid AND 
@@ -460,8 +460,8 @@ p.line_id as operator_id,
 p.line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
-CASE WHEN (p.servicename is not null) THEN p.servicename||' '||begin_station.name||' <-> '||dest_station.name
-     ELSE begin_station.name||' <-> '||dest_station.name||' '||transmode||route(servicenumber,variant) END AS name,
+CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
+     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
 'TRAIN' as transportmode,
 false as monitored
 FROM
