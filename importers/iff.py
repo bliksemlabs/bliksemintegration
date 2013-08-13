@@ -31,7 +31,8 @@ WHERE id = %s
     
 def getPoolIFF(conn,lineplanningnumber,stopcodebegin,stopcodeend):
     print (lineplanningnumber,stopcodebegin,stopcodeend,'iff')
-    if len(lineplanningnumber.split(':')) > 3:
+    linePlanningNumberParts = lineplanningnumber.split(':')
+    if len(linePlanningNumberParts) > 3 or linePlanningNumberParts[1] in ['CNL','EN']:
         getFakePool(conn,stopcodebegin,stopcodeend)
     key = ':'.join([stopcodebegin,stopcodeend])
     if key in cache:
@@ -503,10 +504,8 @@ p.line_id as operator_id,
 p.line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
-CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> 
-'||greatest(dest_station.name,begin_station.name)
-     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' 
-'||transmode||route(servicenumber,variant) END AS name,
+CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
+     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
 'TRAIN' as transportmode,
 false as monitored,
 1 as priority
@@ -535,10 +534,8 @@ p.line_id as operator_id,
 p.line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
-CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> 
-'||greatest(dest_station.name,begin_station.name)
-     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' 
-'||transmode||route(servicenumber,variant) END AS name,
+CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
+     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
 'TRAIN' as transportmode,
 false as monitored,
 2 as priority
