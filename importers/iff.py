@@ -1,5 +1,6 @@
 import psycopg2
 import psycopg2.extras
+from datetime import datetime
 import md5
 from copy import deepcopy
 
@@ -147,18 +148,56 @@ def getAvailabilityConditions(conn):
     cur.execute("""
 SELECT 
 'IFF:'||versionnumber||':'||footnote as operator_id,
-'IFF:'||versionnumber||':'||footnote as privatecode,
-'IFF' as unitcode,
+CONCAT (
+   CASE WHEN (monday    > total / 10) THEN 1 ELSE NULL END,
+   CASE WHEN (tuesday   > total / 10) THEN 2 ELSE NULL END,
+   CASE WHEN (wednesday > total / 10) THEN 3 ELSE NULL END,
+   CASE WHEN (thursday  > total / 10) THEN 4 ELSE NULL END,
+   CASE WHEN (friday    > total / 10) THEN 5 ELSE NULL END,
+   CASE WHEN (saturday  > total / 10) THEN 6 ELSE NULL END,
+   CASE WHEN (sunday    > total / 10) THEN 7 ELSE NULL END
+) as dayflags,
+fromdate,
+todate,
+weeks,
+years,
 '1' as versionref,
-NULL as name,
+'IFF' as unitcode
+FROM (
+SELECT 
+footnote,
+sum((extract(isodow from servicedate) = 1)::int4)::integer as monday,
+sum((extract(isodow from servicedate) = 2)::int4)::integer as tuesday,
+sum((extract(isodow from servicedate) = 3)::int4)::integer as wednesday,
+sum((extract(isodow from servicedate) = 4)::int4)::integer as thursday,
+sum((extract(isodow from servicedate) = 5)::int4)::integer as friday,
+sum((extract(isodow from servicedate) = 6)::int4)::integer as saturday,
+sum((extract(isodow from servicedate) = 7)::int4)::integer as sunday,
+count(distinct servicedate) as total,
+array_agg(extract(week from servicedate)::integer ORDER BY servicedate) as weeks,
+array_agg(extract(year from servicedate)::integer ORDER BY servicedate) as years,
 min(servicedate)::text as fromdate,
 max(servicedate)::text as todate
-FROM footnote,delivery
-GROUP BY versionnumber,footnote
-ORDER BY versionnumber,footnote
-;
+FROM footnote
+GROUP BY footnote) as x,delivery;
 """)
     for row in cur.fetchall():
+        signature = ''
+        seen = set()
+        seen_add = seen.add
+        fromDate = datetime.strptime(row['fromdate'],"%Y-%m-%d")
+        toDate = datetime.strptime(row['todate'],"%Y-%m-%d")
+        now  = datetime.now()
+        if len(row['weeks']) > 5 or abs((now - fromDate).days) > 14 or abs((toDate - now).days) > 40:
+            signature = 'JD'+str(row['years'][-1])+'-'+str(row['weeks'][0])
+        else:
+            signature = 'WD'+'_'.join([ str(x) for x in row['weeks'] if x not in seen and not seen_add(x)])
+        signature = signature+'_'+row['dayflags']
+        row['name'] = signature
+        row['privatecode'] = signature
+        del(row['weeks'])
+        del(row['dayflags'])
+        del(row['years'])
         availabilityconditions[row['operator_id']] = row
     cur.execute("""
 SELECT 
@@ -455,17 +494,27 @@ ORDER BY journeyref,pointref,onwardjourneyref,onwardpointref,transfer_type""")
 def getLines(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
+SELECT DISTINCT ON (operator_id)
+operator_id,privatecode,operatorref,publiccode,name,transportmode,monitored
+FROM
+(
 (SELECT DISTINCT ON (line_id)
 p.line_id as operator_id,
 p.line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
-CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
-     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
+CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> 
+'||greatest(dest_station.name,begin_station.name)
+     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' 
+'||transmode||route(servicenumber,variant) END AS name,
 'TRAIN' as transportmode,
-false as monitored
+false as monitored,
+1 as priority
 FROM
-passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant) ,trnsmode as m,company as c,
+passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant)
+               LEFT JOIN (SELECT serviceid,min(servicedate) as startdate,max(servicedate) as enddate
+                          FROM timetable_validity LEFT JOIN footnote USING (footnote) GROUP BY footnote,serviceid) as v USING (serviceid)
+,trnsmode as m,company as c,
 (select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder ASC) as begin,
 (select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder DESC) as dest,
 station as begin_station,
@@ -477,7 +526,40 @@ p.serviceid = begin.serviceid AND
 p.serviceid = dest.serviceid AND
 begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
-transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y')
+transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y') AND
+(current_date - startdate > 14 OR enddate-current_date > 40)
+ORDER BY line_id ASC,(servicenumber % 2 = 0),dest.stoporder DESC)
+UNION
+(SELECT DISTINCT ON (line_id)
+p.line_id as operator_id,
+p.line_id as privatecode,
+'IFF:'||upper(c.code) as operatorref,
+description as publiccode,
+CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> 
+'||greatest(dest_station.name,begin_station.name)
+     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' 
+'||transmode||route(servicenumber,variant) END AS name,
+'TRAIN' as transportmode,
+false as monitored,
+2 as priority
+FROM
+passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant)
+               LEFT JOIN (SELECT serviceid,min(servicedate) as startdate,max(servicedate) as enddate
+                          FROM timetable_validity LEFT JOIN footnote USING (footnote) GROUP BY footnote,serviceid) as v USING (serviceid)
+,trnsmode as m,company as c,
+(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder ASC) as begin,
+(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder DESC) as dest,
+station as begin_station,
+station as dest_station
+WHERE
+m.code = p.transmode and
+p.companynumber = c.company AND
+p.serviceid = begin.serviceid AND
+p.serviceid = dest.serviceid AND
+begin.station = begin_station.shortname AND
+dest.station = dest_station.shortname AND
+transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y') AND
+(current_date - startdate < 14 OR enddate-current_date < 40)
 ORDER BY line_id ASC,(servicenumber % 2 = 0),dest.stoporder DESC)
 UNION
 (SELECT DISTINCT ON (p.line_id)
@@ -490,7 +572,8 @@ CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y')) THEN 'BUS'
      WHEN (transmode = 'NSM') THEN 'METRO'
      WHEN (transmode = 'NST') THEN 'TRAM'
      ELSE 'BUS' END as transportmode,
-false as monitored
+false as monitored,
+2 as priority
 FROM
 trnsmode as m,passtimes as p,company as c,
 (select distinct on (line_id) line_id,station from passtimes
@@ -510,7 +593,10 @@ begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
 transmode in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y')
 ORDER BY 
-p.line_id,least(begin.station,dest.station),greatest(begin.station,dest.station))""")
+p.line_id,least(begin.station,dest.station),greatest(begin.station,dest.station))
+) as x
+ORDER BY operator_id,priority
+""")
     lines = {}
     for row in cur.fetchall():
         lines[row['operator_id']] = row
