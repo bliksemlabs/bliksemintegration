@@ -16,6 +16,48 @@ def getDataSource():
                           'email'       : None,
                           'url'         : None}}
 
+def recycle_journeyids(conn,data):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    for key,journey in data['JOURNEY'].items():
+        journey = deepcopy(journey)
+        setRefsDict(journey,data['AVAILABILITYCONDITION'],'availabilityconditionref')
+        setRefsDict(journey,data['JOURNEYPATTERN'],'journeypatternref')
+        setRefsDict(journey,data['TIMEDEMANDGROUP'],'timedemandgroupref')
+        setRefsDict(journey,data['NOTICEASSIGNMENT'],'noticeassignmentref',ignore_null=True)
+        setRefsDict(journey,data['PRODUCTCATEGORY'],'productcategoryref')
+        exists,id = simple_dict_insert(conn,'NEWJOURNEY',journey,check_existing=False,return_id=True)
+    cur.execute("""
+SELECT jn.operator_id,jo.id,jn.id as tmp_id
+FROM
+journey as jo LEFT JOIN (SELECT availabilityconditionref,array_agg(validdate ORDER BY validdate) as days
+                         FROM availabilityconditionday GROUP BY availabilityconditionref) as ado USING (availabilityconditionref)
+,newjourney as jn LEFT JOIN (SELECT availabilityconditionref,array_agg(validdate ORDER BY validdate) as days
+                         FROM availabilityconditionday GROUP BY availabilityconditionref) as adn USING (availabilityconditionref)
+WHERE
+ado.days = adn.days AND
+jo.name = jn.name AND
+jo.departuretime = jn.departuretime
+UNION
+SELECT jn.operator_id,jo.id,jn.id as tmp_id
+FROM
+journey as jo,newjourney as jn
+WHERE
+jo.name = jn.name AND
+jo.departuretime = jn.departuretime AND
+jo.operator_id = jn.operator_id
+UNION
+SELECT jn.operator_id,jo.id,jn.id as tmp_id
+FROM
+journey as jo,newjourney as jn
+WHERE
+jo.name = jn.name AND
+jo.departuretime = jn.departuretime AND
+jo.operator_id = jn.operator_id
+""")
+    for row in cur.fetchall():
+        data['JOURNEY'][row['operator_id']]['id'] = row['id']
+        cur.execute("delete from newjourney where id = %s",[row['tmp_id']])
+
 def import_zip(path,filename,version):
     print (path,filename)
     meta,conn = load(path,filename)
@@ -47,7 +89,7 @@ def import_zip(path,filename,version):
         data['NOTICE'] = {}
         data['NOTICEGROUP'] = {}
         conn.close()
-        insert(data)
+        insert(data,recycle_journeyids=recycle_journeyids)
     except:
         raise
 
