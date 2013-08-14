@@ -28,7 +28,9 @@ create table Version(
     datasourceRef integer NOT NULL references datasource(id),
     startdate date NOT NULL,
     enddate date NOT NULL,
-    description varchar(255)
+    description varchar(255),
+    versionmajor integer,
+    versionminor integer
 );
 
 create table RejectedVersion(
