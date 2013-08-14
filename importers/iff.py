@@ -507,7 +507,7 @@ description as publiccode,
 CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
      ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
 'TRAIN' as transportmode,
-false as monitored,
+true as monitored,
 1 as priority
 FROM
 passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant)
@@ -537,7 +537,7 @@ description as publiccode,
 CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
      ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
 'TRAIN' as transportmode,
-false as monitored,
+true as monitored,
 2 as priority
 FROM
 passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant)
