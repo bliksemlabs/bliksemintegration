@@ -470,7 +470,6 @@ def getTripTransfers(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
 SELECT DISTINCT ON (journeyref,pointref,onwardjourneyref,onwardpointref)
-md5(concat_ws(':','IFF',p.serviceid,p.line_id,p.footnote,coalesce(p.variant,p.servicenumber),onward.serviceid,onward.line_id,onward.footnote,coalesce(onward.variant,onward.servicenumber),possiblechange)) as operator_id,
 concat_ws(':','IFF',p.serviceid,p.line_id,p.footnote,coalesce(p.variant,p.servicenumber)) as journeyref,
 'IFF:'||p.station||':'||coalesce(p.platform,'0') as pointref,
 concat_ws(':','IFF',onward.serviceid,onward.line_id,onward.footnote,coalesce(onward.variant,onward.servicenumber)) as onwardjourneyref,
@@ -488,6 +487,7 @@ coalesce(onward.forboarding,true) = true
 ORDER BY journeyref,pointref,onwardjourneyref,onwardpointref,transfer_type""")
     transfers = {}
     for row in cur.fetchall():
+        row['operator_id'] = '/'.join([row['journeyref'],row['onwardjourneyref'],row['pointref'],row['onwardpointref']])
         transfers[row['operator_id']] = row
     cur.close()
     return transfers
@@ -599,4 +599,3 @@ ORDER BY operator_id,priority
         lines[row['operator_id']] = row
     cur.close()
     return lines
-
