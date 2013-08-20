@@ -173,13 +173,27 @@ None, 'lowfloor': True, 'blockref': None, 'departuretime': 32640, 'journeypatter
 'timedemandgroupref': 'aad863b6220e60df872628cab1916c07', 'privatecode': 'EBS:22103:7001'}
 """
 
-def import_journeys(conn,data):
+def deleteJourney(conn,id):
+    cur = conn.cursor()
+    cur.execute("DELETE FROM journeytransfers WHERE journeyref = %s",[id])
+    cur.execute("DELETE FROM journeytransfers WHERE onwardjourneyref = %s",[id])
+    cur.execute("DELETE FROM journey WHERE id = %s",[id])
+    cur.close()
+
+def getConnection():
+    return psycopg2.connect(database_connect)
+
+def import_journeys(conn,data,recycle_journeyids=None):
+    if recycle_journeyids is not None:
+        recycle_journeyids(conn,data)
     for key,journey in data['JOURNEY'].items():
         setRefsDict(journey,data['AVAILABILITYCONDITION'],'availabilityconditionref')
         setRefsDict(journey,data['JOURNEYPATTERN'],'journeypatternref')
         setRefsDict(journey,data['TIMEDEMANDGROUP'],'timedemandgroupref')
         setRefsDict(journey,data['NOTICEASSIGNMENT'],'noticeassignmentref',ignore_null=True)
         setRefsDict(journey,data['PRODUCTCATEGORY'],'productcategoryref')
+        if 'id' in journey:
+            deleteJourney(conn,journey['id'])
         exists,id = simple_dict_insert(conn,'JOURNEY',journey,check_existing=False,return_id=True)
         data['JOURNEY'][key] = id
         if exists:
@@ -243,6 +257,22 @@ update availabilityconditionday set isavailable = false where availabilitycondit
                 """,[unitcode])
     cur.close()
 
+def versions_imported(datasourceid):
+    conn = psycopg2.connect(database_connect)
+    cur = conn.cursor()
+    cur.execute("""
+SELECT version.operator_id FROM version LEFT JOIN datasource ON (datasourceref = datasource.id)
+WHERE datasource.operator_id = %s
+UNION 
+SELECT rejectedversion.operator_id FROM rejectedversion LEFT JOIN datasource ON (datasourceref = datasource.id)
+WHERE datasource.operator_id = %s
+""",[datasourceid]*2) 
+    versions = set([])
+    for row in cur.fetchall():
+        versions.add(row[0])
+    cur.close()
+    return versions
+
 def version_imported(operator_id):
     conn = psycopg2.connect(database_connect)
     cur = conn.cursor()
@@ -269,7 +299,7 @@ def reject(data):
     conn.commit()
     conn.close()
     
-def insert(data):
+def insert(data,recycle_journeyids=None):
     conn = psycopg2.connect(database_connect)
     try:
         #checkIfExistingVersion(conn,data['VERSION'])
@@ -292,7 +322,7 @@ def insert(data):
         simple_dictdict_insert(conn,'STOPPOINT',data['STOPPOINT'])
         import_availabilityconditions(conn,data) 
         import_journeypatterns(conn,data)
-        import_journeys(conn,data)
+        import_journeys(conn,data,recycle_journeyids=recycle_journeyids)
         if 'JOURNEYTRANSFERS' in data:
             setRefs(data['JOURNEYTRANSFERS'],data['JOURNEY'],'journeyref')
             setRefs(data['JOURNEYTRANSFERS'],data['STOPPOINT'],'pointref')
