@@ -1,4 +1,4 @@
-delete from journey where 
+delete from journey where privatecode not like 'GVB:%' AND
 availabilityconditionref not in (select 
 id from activeavailabilitycondition WHERE 
 todate >= date 'yesterday');
