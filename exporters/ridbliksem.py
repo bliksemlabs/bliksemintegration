@@ -153,7 +153,10 @@ query = """
         from stops
         order by stop_id
         """
-os.remove('stops.db')
+try:
+    os.remove('stops.db')
+except:
+    pass
 conn = sqlite3.connect("stops.db")
 conn.text_factory = str
 cur = conn.cursor()
