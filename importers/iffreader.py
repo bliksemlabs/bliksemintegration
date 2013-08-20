@@ -515,7 +515,7 @@ WHERE idx = s.laststop AND idx != timetable_transport.firststop
 ) as x
 order by serviceid,servicenumber,footnote,variant,stoporder);
 
-create table passtimes as (
+create temporary table passtimes as (
 SELECT line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,servicename,idx,station,platform,
 row_number() over(PARTITION BY line_id,serviceid,transmode,coalesce(servicenumber,variant) ORDER BY stoporder,arrivaltime ASC) as stoporder
 ,arrivaltime,departuretime,md5(string_agg(station||':'||coalesce(platform,'0'),'>') OVER (PARTITION BY 
