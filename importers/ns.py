@@ -1,6 +1,6 @@
 from iff import *
 from iffreader import load
-from inserter import insert,version_imported,reject
+from inserter import insert,version_imported,reject,setRefsDict,simple_dict_insert
 from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
@@ -18,6 +18,26 @@ def getDataSource():
 
 def recycle_journeyids(conn,data):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+create temporary table NewJourney(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255) NOT NULL,
+    operator_id varchar(255) NOT NULL,
+    availabilityconditionRef integer NOT NULL,
+    journeypatternref integer NOT NULL,
+    timedemandgroupref integer NOT NULL,
+    productCategoryRef integer,
+    noticeassignmentRef integer,
+    departuretime integer,
+    blockref varchar(255),
+    name varchar(255),
+    lowfloor boolean,
+    hasLiftOrRamp boolean,
+    haswifi boolean,
+    bicycleAllowed boolean,
+    onDemand boolean
+);
+""")
     for key,journey in data['JOURNEY'].items():
         journey = deepcopy(journey)
         setRefsDict(journey,data['AVAILABILITYCONDITION'],'availabilityconditionref')
@@ -57,7 +77,7 @@ jo.operator_id = jn.operator_id
     for row in cur.fetchall():
         data['JOURNEY'][row['operator_id']]['id'] = row['id']
         cur.execute("delete from newjourney where id = %s",[row['tmp_id']])
-
+        cur.execute("delete from journeytransfers where journeyref = %s or onwardjourneyref = %s",[row['id']]*2)
 def import_zip(path,filename,version):
     print (path,filename)
     meta,conn = load(path,filename)
