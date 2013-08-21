@@ -49,7 +49,7 @@ ORDER BY operator_id,pointorder
         value['operator_id'] = m.hexdigest()
     return timedemandgroups
 
-def getAvailabilityConditionsFromCalendars(conn,validfrom):
+def getAvailabilityConditionsFromCalendars(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     availabilityConditions = {}
     cur.execute("""
@@ -59,12 +59,11 @@ concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncod
 dataownercode||':'||organizationalunitcode as unitcode,
 '1' as versionref,
 description as name,
-cast(greatest(coalesce(t.validfrom,pg.validfrom),%s::date) as text) as fromdate,
+coalesce(t.validfrom,pg.validfrom) as fromdate,
 cast(coalesce(t.validthru,pg.validthru) as text) as todate
 FROM pegrval as pg JOIN tive as t USING (version, dataownercode, organizationalunitcode, periodgroupcode)
                    JOIN pujo as pu USING (version, dataownercode, organizationalunitcode, timetableversioncode, periodgroupcode, specificdaycode)
-WHERE coalesce(t.validthru,pg.validthru) >= %s::date;
-""",[validfrom]*2)
+""")
     for row in cur.fetchall():
         availabilityConditions[row['operator_id']] = row
     cur.execute("""
@@ -90,7 +89,6 @@ FROM(
 		pg.validthru as validthru
                 FROM pegrval as pg JOIN tive as tv USING (version, dataownercode, organizationalunitcode, periodgroupcode)
                                    JOIN pujo as pj USING (version, dataownercode, organizationalunitcode, timetableversioncode, periodgroupcode, specificdaycode)
-                WHERE coalesce(tv.validthru,pg.validthru) >= %s::date
                 ORDER BY operator_id,validfrom,validthru
                 ) as calendar
 	) as calendar_dates
@@ -99,8 +97,7 @@ position( CAST(CASE WHEN extract(dow from date) = 0 THEN 7 ELSE extract(dow from
 AND NOT EXISTS (
   SELECT 1 FROM (select cast(validdate as date) as excopdate,left(cast(daytypeason as text),1) as daytypeason from excopday) as excopday
   WHERE date = excopdate and position( CAST(CASE WHEN extract(dow from date) = 0 THEN 7 ELSE extract(dow from date) END as text) in daytypeason) = 0
-  ) AND
-date >= %s
+  )
 UNION
 SELECT
 concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype) AS operator_id,
@@ -129,7 +126,6 @@ FROM(
 			coalesce(tv.validthru,pg.validthru) as validthru
 			FROM pegrval as pg JOIN tive as tv USING (version, dataownercode, organizationalunitcode, periodgroupcode)
                                            JOIN pujo as pj USING (version, dataownercode, organizationalunitcode, timetableversioncode, periodgroupcode, specificdaycode)
-			WHERE coalesce(tv.validthru,pg.validthru) >= %s::date
 			ORDER BY version,dataownercode,timetableversioncode,organizationalunitcode,periodgroupcode,specificdaycode,validfrom,validthru
                         ) as calendar
 		) as dates,
@@ -137,10 +133,9 @@ FROM(
 	WHERE
                 excopdate = date) as x
 WHERE
-daytype is not null AND
-date >= %s) as x
+daytype is not null) as x
 GROUP BY operator_id
-;""",[validfrom]*4)
+;""")
     for row in cur.fetchall():
         availabilityConditions[row['availabilityconditionref']]['DAYS'] = row
     cur.close()

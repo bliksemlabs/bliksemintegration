@@ -1,5 +1,5 @@
 from kv1_811 import *
-from inserter import insert,version_imported
+from inserter import insert,version_imported,versions_imported,getConnection
 import urllib2
 from lxml import etree
 import logging
@@ -80,6 +80,8 @@ def import_zip(path,filename,meta=None):
                                 'datasourceref' : '1',
                                 'operator_id'   : ':'.join(['GVB',meta['key'],meta['dataownerversion']]),
                                 'startdate'     : meta['validfrom'],
+                                'versionmajor'  : meta['index'],
+                                'versionminor'  : meta['dataownerversion'],
                                 'enddate'       : meta['validthru'],
                                 'description'   : filename}
         data['DESTINATIONDISPLAY'] = getDestinationDisplays(conn)
@@ -136,6 +138,42 @@ def multikeysort(items, columns):
             return 0
     return sorted(items, cmp=comparer)
 
+"""
+UPDATE availabilityconditionday set isavailabile = false WHERE availabilityconditionref IN
+(SELECT availabilitycondition.id FROM availabilitycondition LEFT JOIN version ON (versionref = version.id) 
+                                      LEFT JOIN datasource ON (datasourceref= datasource.id)
+ WHERE datasource.operator_id = 'GVB');
+
+SELECT DISTINCT ON (unitcode,validdate) unitcode,validdate,versionmajor,versionminor
+FROM availabilityconditionday as ad LEFT JOIN availabilitycondition as ac ON (availabilityconditionref = ac.id)
+                                    LEFT JOIN version ON (versionref = version.id) 
+                                    LEFT JOIN datasource ON (datasourceref= datasource.id)
+WHERE datasource.operator_id = 'GVB'
+ORDER BY unitcode,validdate,versionmajor,versionminor DESC
+;"""
+
+def deleteversion(versionId):
+    conn = getConnection()
+    cur = conn.cursor()
+    print 'Deleting '+versionId
+    print 'Delete journeys'
+    cur.execute("""
+DELETE FROM journey WHERE availabilityconditionref IN
+ (SELECT DISTINCT ac.id FROM availabilitycondition as ac LEFT JOIN version ON (version.id = versionref) WHERE version.operator_id = %s)""",[versionId])
+    print 'Delete validdays'
+    cur.execute("""
+DELETE FROM availabilityconditionday WHERE availabilityconditionref IN                    
+ (SELECT DISTINCT ac.id FROM availabilitycondition as ac LEFT JOIN version ON (version.id = versionref) WHERE version.operator_id = %s)""",[versionId])
+    print 'Delete availabilityconditions'
+    cur.execute("""
+DELETE FROM availabilitycondition WHERE id IN
+ (SELECT DISTINCT ac.id FROM availabilitycondition as ac LEFT JOIN version ON (version.id = versionref) WHERE version.operator_id = %s)""",[versionId])
+    print 'Delete versionrecord'
+    cur.execute("""DELETE FROM version WHERE operator_id = %s""",[versionId])
+    conn.commit()
+    cur.close()
+    conn.close()
+
 def sync():
     tree = etree.parse(kv1index_gvb)
     index = []
@@ -148,17 +186,24 @@ def sync():
         file['publishdate'] = periode.find('publicatiedatum').text
         file['isbaseline'] = (periode.find('isbaseline').text == 'true')
         if file['ispublished'] == 'false':
-            deletedelta(conn,file['key'])
+            continue
         file['validfrom'] = periode.find('startdatum').text
         file['validthru'] = periode.find('einddatum').text
+        file['index'] = int(periode.find('index').text)
         if file['key'] == 'a00bac99-e404-4783-b2f7-a39d48747999':
             file['isbaseline'] = True
         index.append(file)
-    index = multikeysort(index, ['-isbaseline','publishdate'])
+    index = multikeysort(index, ['-isbaseline','index','publishdate'])
+    imported = versions_imported('GVB')
     for f in index:
-        if not version_imported(':'.join(['GVB',f['key'],f['dataownerversion']])):
+        key = ':'.join(['GVB',f['key'],f['dataownerversion']])
+        if key not in imported:
             logger.info('Import file %s version %s' % (f['filename'],str(f['dataownerversion'])))
             try:
                 download(url_gvb+f['filename'],f['filename'],f)
             except Exception as e:
                 print e
+        else:
+            imported.remove(key)
+    for expiredVersion in imported:
+        deleteversion(expiredVersion)
