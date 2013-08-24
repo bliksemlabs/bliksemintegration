@@ -133,6 +133,7 @@ def merge():
     conn = getConnection()
     cur = conn.cursor()
     cur.execute("""
+begin;
 UPDATE availabilityconditionday set isavailable = false WHERE availabilityconditionref IN
 (SELECT availabilitycondition.id FROM availabilitycondition LEFT JOIN version ON (versionref = version.id) 
                                       LEFT JOIN datasource ON (datasourceref= datasource.id)
@@ -140,11 +141,14 @@ UPDATE availabilityconditionday set isavailable = false WHERE availabilitycondit
 
 UPDATE availabilityconditionday set isavailable = true WHERE availabilityconditionref||':'||validdate in
 (SELECT DISTINCT ON (unitcode,validdate) availabilityconditionref||':'||validdate
-FROM availabilityconditionday as ad LEFT JOIN availabilitycondition as ac ON (availabilityconditionref = ac.id)
-                                    LEFT JOIN version ON (versionref = version.id) 
-                                    LEFT JOIN datasource ON (datasourceref= datasource.id)
+FROM availabilityconditionday as ad JOIN availabilitycondition as ac ON (availabilityconditionref = ac.id)
+JOIN (SELECT version.id,version.operator_id,startdate,enddate,version.description,row_number() over (order by startdate ASC,enddate DESC) as idx
+FROM VERSION JOIN datasource ON (datasourceref= datasource.id)
 WHERE datasource.operator_id = 'GVB'
-ORDER BY unitcode,validdate,version.startdate,version.enddate);""")
+ORDER BY startdate ASC,enddate DESC) as importorder ON (versionref = importorder.id)
+ORDER BY unitcode,validdate,importorder.idx DESC);
+commit;
+""")
     conn.commit()
     conn.close()
 
