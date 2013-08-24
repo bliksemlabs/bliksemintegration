@@ -328,6 +328,12 @@ def insert(data,recycle_journeyids=None):
             setRefs(data['JOURNEYTRANSFERS'],data['STOPPOINT'],'pointref')
             setRefs(data['JOURNEYTRANSFERS'],data['JOURNEY'],'onwardjourneyref')
             setRefs(data['JOURNEYTRANSFERS'],data['STOPPOINT'],'onwardpointref')
+            fromTo = set([])
+            for id,transfer in data['JOURNEYTRANSFERS'].items():
+                key = ':'.join(str(x) for x in [transfer['journeyref'],transfer['onwardjourneyref'],transfer['pointref'],transfer['onwardpointref']])
+                if key in fromTo:
+                   del(data['JOURNEYTRANSFERS'][id])
+                fromTo.add(key)
             simple_dictdict_insert(conn,'JOURNEYTRANSFERS',data['JOURNEYTRANSFERS'],return_id=False)
         conn.commit()
     except:
