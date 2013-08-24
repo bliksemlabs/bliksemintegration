@@ -193,6 +193,8 @@ route_mask_for_idx = [] # one active-days-bitmask for each route (bundle of trip
 route_for_idx = []
 route_n_stops = [] # number of stops in each route
 route_n_trips = [] # number of trips in each route
+route_first = []
+route_last  = []
 n_trips_total = 0
 n_trips_removed = 0
 n_routes_removed = 0
@@ -218,6 +220,9 @@ for route in all_routes :
         route_mask_for_idx.append(route_mask)
         route_n_stops.append(len(route.pattern.stop_ids))
         route_n_trips.append(len(running_trip_ids))
+        first, last = route.find_time_range()
+        route_first.append(first >> 2)
+        route_last.append(last >> 2)
     else :
         n_routes_removed += 1
 nroutes = len(route_for_idx) # this is the final culled list of routes
@@ -225,6 +230,8 @@ print '%d / %d routes had running services, %d / %d trips removed' % (nroutes, l
 del all_routes, n_trips_total, n_trips_removed, n_routes_removed
 route_n_stops.append(0) # sentinel
 route_n_trips.append(0) # sentinel
+route_first.append(0) # sentinel
+route_last.append(0) # sentinel
 
 # We have two definitions of "route".
 # GTFS routes are totally arbitrary groups of trips (but fortunately NL GTFS routes correspond with 
@@ -403,8 +410,8 @@ for stop in zip (stop_routes_offsets, transfers_offsets) :
 print "saving route indexes"
 write_text_comment("ROUTE STRUCTS")
 loc_routes = tell()
-route_t = Struct('IIII') # change to unsigned
-route_t_fields = [route_stops_offsets, trip_ids_offsets, route_n_stops, route_n_trips]
+route_t = Struct('IIIIHH')
+route_t_fields = [route_stops_offsets, trip_ids_offsets, route_n_stops, route_n_trips, route_first, route_last]
 # check that all list lengths match the total number of routes. 
 for l in route_t_fields :
     # the extra last route is a sentinel so we can derive list lengths for the last true route.
