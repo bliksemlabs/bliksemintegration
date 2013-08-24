@@ -14,10 +14,15 @@ class Pattern:
         return (tuple(self.stops),tuple(self.pickup_types),tuple(drop_off_types), productcategory,ondemand)
 
 class TripBundle:
-    def __init__(self, riddb, pattern):
+    def __init__(self, riddb, pattern,min_time=0,max_time=999999):
         self.riddb = riddb
         self.pattern = pattern
         self.trip_ids = []
+        self.min_time = min_time
+        self.max_time = max_time
+
+    def find_time_range(self):
+        return (self.min_time,self.max_time)
 
     def sorted_trip_ids(self) :
         """ function from a route (TripBundle) to a list of all trip_ids for that route,
@@ -83,7 +88,7 @@ SELECT stop_times.* FROM stop_times, trips
         
         return zip(*(trip_id_sorter.values()))
 
-class RIDdatabase:
+class RIDDatabase:
     def __init__(self, dbname):
         self.dbname = dbname
         self.conn = psycopg2.connect("dbname='%s'"%(dbname))
@@ -153,7 +158,9 @@ WHERE validdate = %s and isavailable = true""",[sample_date]);
     def stops(self):
         cur = self.conn.cursor()
         
-        cur.execute( "SELECT id as stop_id, name as stop_name, latitude as stop_lat, longitude stop_lon FROM scheduledstoppoint ORDER BY id" )
+        cur.execute("""
+SELECT id as stop_id,CASE WHEN (platformcode is not null) THEN name||'|'||platformcode ELSE name END as stop_name, 
+latitude as stop_lat, longitude stop_lon FROM scheduledstoppoint ORDER BY id""" )
         ret = cur.fetchall()
         cur.close()
         return ret
@@ -243,11 +250,14 @@ ORDER BY journeypatternref,timedemandgroupref""")
         patterns = {}
         bundles = {}
 
-        c.execute( """SELECT servicejourney.journeypatternref,pc.name,ondemand,array_agg(servicejourney.id) as trips,array_agg(distinct servicejourney.timedemandgroupref)
+        c.execute( """SELECT servicejourney.journeypatternref,pc.name,ondemand,array_agg(servicejourney.id) as trips,array_agg(distinct servicejourney.timedemandgroupref),
+min(min_time),max(max_time)
                       FROM servicejourney LEFT JOIN productcategory as pc ON (productcategoryref = pc.id),
 (SELECT DISTINCT ON (timedemandgroupref,journeypatternref) timedemandgroupref,journeypatternref,
 count(distinct pointintimedemandgroup.pointorder) as timedemandgrouppoints,
-count(distinct pointinjourneypattern.pointorder) as journeypatternpoints
+count(distinct pointinjourneypattern.pointorder) as journeypatternpoints,
+min(departuretime) as min_time,
+max(departuretime+totaldrivetime+stopwaittime) as max_time
 FROM 
 servicejourney LEFT JOIN pointintimedemandgroup USING (timedemandgroupref)
                LEFT JOIN pointinjourneypattern USING (journeypatternref,pointorder)
@@ -256,7 +266,7 @@ WHERE servicejourney.timedemandgroupref = lengths.timedemandgroupref AND service
                       GROUP BY servicejourney.journeypatternref,timedemandgrouppoints,journeypatternpoints,pc.name,ondemand""" )
         i = 0
         routes = c.fetchall()
-        for journeypatternref,productcategory,ondemand,trips,timedemandgroups in routes:
+        for journeypatternref,productcategory,ondemand,trips,timedemandgroups,min_time,max_time in routes:
             i+=1
             if reporter and i%(len(routes)//50+1)==0: reporter.write( "%d/%d trips grouped by %d patterns\n"%(i,len(routes),len(bundles)))
             d = self.conn.cursor()
@@ -294,9 +304,13 @@ GROUP BY journeypatternref
                 pattern = patterns[pattern_signature]
                 
             if pattern not in bundles:
-                bundles[pattern] = TripBundle( self, pattern )
+                bundles[pattern] = TripBundle( self, pattern ,min_time=min_time,max_time=max_time)
             for trip_id in trips:
                 bundles[pattern].add_trip( trip_id )
+                if min_time < bundles[pattern].min_time:
+                    bundles[pattern].min_time = min_time
+                if max_time > bundles[pattern].max_time:  
+                    bundles[pattern].max_time = max_time
 
         c.close()
         
