@@ -294,6 +294,14 @@ WHERE isavailable = true
 GROUP BY ac.id) as x
 );
 
+CREATE VIEW CurrentAvailabilityCondition AS (
+SELECT id,privatecode,operator_id,unitcode,versionref,startdate,todate FROM (
+SELECT ac.id,privatecode,operator_id,unitcode,versionref,name,min(validdate) as startdate,max(validdate) as todate
+FROM AvailabilityCondition as ac LEFT JOIN AvailabilityConditionDay as ad ON ( ac.id = ad.availabilityconditionRef)
+WHERE isavailable = true AND validdate >= date 'yesterday'
+GROUP BY ac.id) as x
+);
+
 CREATE VIEW ServiceJourney AS (
 SELECT * FROM journey
 );
@@ -361,3 +369,4 @@ create index stoppoint_geom_gist on stoppoint USING gist(the_geom);
 create index stoppoint_geom_rd_gist on stoppoint USING gist(the_geom_rd);
 create index on pointinjourneypattern(pointref);
 create index on availabilityconditionday(validdate);
+create index on availabilityconditionday(validdate,isavailable);
