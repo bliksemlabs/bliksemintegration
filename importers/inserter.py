@@ -16,7 +16,7 @@ def dictequal(dictnew,dictold,ignore_keys=[]):
         elif str(dictold[k]) != str(dictnew[k]):
             if k in ['latitude','longitude','rd_x','rd_y'] or (k not in ['stoparearef'] and len(k) > 3 and k[-3:] == 'ref'):
               try:
-                if float(dictold[k]) != float(dictnew[k]):
+                if dictold[k] is None or dictnew[k] is None or float(dictold[k]) != float(dictnew[k]):
                     return False
               except:
                 logger.error('%s: %s==%s' % (k,dictold[k],dictnew[k]),exc_info=True)
