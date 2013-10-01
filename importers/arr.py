@@ -1,4 +1,4 @@
-from kv1_811 import *
+from kv1_810 import *
 from inserter import insert,version_imported,reject
 from bs4 import BeautifulSoup
 import urllib2
