@@ -37,7 +37,7 @@ def setProductFormulas(conn):
     cur = conn.cursor()
     cur.execute("""
 UPDATE jopatili SET productformulatype = '1' WHERE confinrelcode = 'wtlBB';
-UPDATE jopatili SET productformulatype = '37' WHERE confinrelcode = 'wtlR';""")
+UPDATE jopatili SET productformulatype = '37' WHERE confinrelcode = 'wtlR' and lineplanningnumber not like '220%';""")
     cur.close()
     return
 
