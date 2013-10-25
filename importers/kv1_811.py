@@ -107,7 +107,7 @@ FROM jopa left join ( SELECT DISTINCT ON (version, dataownercode, lineplanningnu
         journeypatterns[row['operator_id']]['POINTS'] = []
         row['routeref'] = routeRefForPattern[row['operator_id']]
     cur.execute("""
-SELECT
+(SELECT
 j.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as journeypatternref,
 cast(timinglinkorder  as integer) as pointorder,
 null as privatecode,
@@ -127,10 +127,10 @@ CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false
 coalesce(sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode
                                         ORDER BY j.version,j.dataownercode, lineplanningnumber, journeypatterncode, timinglinkorder
                                         ROWS between UNBOUNDED PRECEDING and 1 PRECEDING),0) as fareunitspassed
-FROM jopatili as j LEFT JOIN line USING (version,dataownercode,lineplanningnumber)
-                   LEFT JOIN link as l USING (version,dataownercode,userstopcodebegin,userstopcodeend,transporttype)
-                   LEFT JOIN dest USING (version,destcode) LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = 
-j.userstopcodebegin)
+FROM jopatili as j JOIN line USING (version,dataownercode,lineplanningnumber)
+                   JOIN link as l USING (version,dataownercode,userstopcodebegin,userstopcodeend,transporttype)
+                   JOIN dest USING (version,destcode) LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = j.userstopcodebegin)
+)
 UNION (
 SELECT DISTINCT ON (j.version,j.dataownercode,lineplanningnumber,journeypatterncode)
 j.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as journeypatternref,
