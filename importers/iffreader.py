@@ -416,8 +416,8 @@ SELECT CASE WHEN (servicenumber = 0 and variant is null) THEN NULL
             WHEN (coalesce(servicenumber,variant) between 100 and 99999) THEN (coalesce(servicenumber,variant)/100)*100
             WHEN (coalesce(servicenumber,variant) between 690000 and 699999) THEN ((coalesce(servicenumber,variant)-690000)/100)*100
             WHEN (coalesce(servicenumber,variant) between 700000 and 709999) THEN ((coalesce(servicenumber,variant)-700000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 710000 and 739999) THEN ((coalesce(servicenumber,variant)-710000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 720000 and 739999) THEN ((coalesce(servicenumber,variant)-720000)/100)*100
+            WHEN (coalesce(servicenumber,variant) between 710000 and 719999) THEN ((coalesce(servicenumber,variant)-710000)/100)*100
+            WHEN (coalesce(servicenumber,variant) between 720000 and 729999) THEN ((coalesce(servicenumber,variant)-720000)/100)*100
             WHEN (coalesce(servicenumber,variant) between 730000 and 739999) THEN ((coalesce(servicenumber,variant)-730000)/100)*100
             WHEN (coalesce(servicenumber,variant) between 740000 and 749999) THEN ((coalesce(servicenumber,variant)-740000)/100)*100
             WHEN (coalesce(servicenumber,variant) between 750000 and 759999) THEN ((coalesce(servicenumber,variant)-750000)/100)*100
