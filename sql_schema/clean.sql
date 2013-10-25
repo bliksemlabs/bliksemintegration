@@ -50,7 +50,7 @@ DELETE FROM line where id not in (
 SELECT DISTINCT lineref FROM route
 );
 
-DELETE FROM STOPPOINT where id not in (
+DELETE FROM STOPPOINT where operator_id not like 'IFF%' AND id not in (
 SELECT DISTINCT id from (
 SELECT DISTINCT pointref as id FROM pointinjourneypattern
 UNION
@@ -58,4 +58,4 @@ SELECT DISTINCT onwardpointref as id FROM pointinjourneypattern
 WHERE onwardpointref is not null) as x
 );
 
-DELETE from stoparea where id not in (select distinct stoparearef from stoppoint where stoparearef is not null);
+DELETE from stoparea where id not in (select distinct stoparearef from stoppoint where stoparearef is not null) AND operator_id not like 'IFF%';
