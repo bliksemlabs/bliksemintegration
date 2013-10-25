@@ -46,7 +46,7 @@ p1.idx as pointorder,
 cast(CAST(ST_Y(p1.the_geom) AS NUMERIC(8,5)) as text) AS latitude,
 cast(CAST(ST_X(p1.the_geom) AS NUMERIC(7,5)) as text) AS longitude,
 coalesce(SUM  (st_distance(st_transform(p1.the_geom,28992),st_transform(p2.the_geom,28992))::integer)
-         OVER (partition by p1.stopbegin,p1.stopend order by p1.idx ROWS between UNBOUNDED PRECEDING and 1 PRECEDING),0) as distancefromstart
+         OVER (partition by p1.stopbegin,p1.stopend order by p1.idx ROWS between UNBOUNDED PRECEDING and 1 PRECEDING),1) as distancefromstart
 FROM poolpoints as p1 LEFT JOIN poolpoints as p2 ON (p1.stopbegin = p2.stopbegin AND p1.stopend = p2.stopend AND p1.idx +1 = p2.idx)
 WHERE p1.stopbegin = %s and p1.stopend = %s
 ORDER BY pointorder
@@ -106,8 +106,8 @@ NULL as town,
 (trainchanges != 2) as isscheduled,
 coalesce(latitude::text,ST_Y(the_geom)::NUMERIC(9,6)::text) AS latitude,
 coalesce(longitude::text,ST_X(the_geom)::NUMERIC(8,6)::text) AS longitude,
-x as rd_x,
-y as rd_y,
+coalesce(x,0) as rd_x,
+coalesce(y,0) as rd_y,
 platform as platformcode
 FROM 
 (SELECT DISTINCT ON (station,platform) station,platform,station||':'||coalesce(platform,'0') as stopid FROM passtimes) as stations
@@ -116,6 +116,8 @@ from station) as station USING (station)
           LEFT JOIN quays ON (stopid = quays.id)                          
 """)
     for row in cur.fetchall():
+        if row['rd_x'] is None:
+            print row
         userstops[row['operator_id']] = row
     cur.close()
     return userstops
@@ -526,7 +528,7 @@ p.serviceid = dest.serviceid AND
 begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
 transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y') AND
-(current_date - startdate > 14 OR enddate-current_date > 40)
+(current_date - startdate > 28 OR enddate-current_date > 60)
 ORDER BY line_id ASC,(servicenumber % 2 = 0),dest.stoporder DESC)
 UNION
 (SELECT DISTINCT ON (line_id)
@@ -556,7 +558,7 @@ p.serviceid = dest.serviceid AND
 begin.station = begin_station.shortname AND
 dest.station = dest_station.shortname AND
 transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y') AND
-(current_date - startdate < 14 OR enddate-current_date < 40)
+(current_date - startdate < 28 OR enddate-current_date < 40)
 ORDER BY line_id ASC,(servicenumber % 2 = 0),dest.stoporder DESC)
 UNION
 (SELECT DISTINCT ON (p.line_id)
