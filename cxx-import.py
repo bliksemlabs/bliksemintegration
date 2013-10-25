@@ -11,8 +11,7 @@ ch.setLevel(logging.INFO)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
-path = '/mnt/kv1/kv1feeds/connexxion/'
-filename = '9292OV 2013-06-02a.zip'
-meta = {'dataownercode' : 'CXX'}
-
+path = '.'
+filename = sys.argv[1]
+meta = {'dataownercode' : 'CXX', 'validfrom' : sys.argv[2]}
 importers.cxx.import_zip(path,filename,meta)
