@@ -23,17 +23,30 @@ class TripBundle:
         self.max_time = max_time
 
     def find_time_range(self):
-        return (self.min_time,self.max_time)
+        min_time = 99999999
+        max_time = 0
+        for trip_id in self.trip_ids:
+            trip_min_time = self.riddb.trip_begin_times[trip_id]
+            trip_max_time = (trip_min_time +
+                self.riddb.timedemandgroups[self.riddb.timedemandgroup_for_trip[trip_id]][0][-1])
+            if trip_min_time < min_time:
+                min_time = trip_min_time
+            if trip_max_time > max_time:
+                max_time = trip_max_time
+        return (min_time, max_time)
 
     def gettimepatterns(self):
         timepatterns = []
-        cur = self.riddb.conn.cursor()
-        cur.execute("""SELECT DISTINCT journeypatternref||':'||timedemandgroupref FROM journey WHERE id = any(%s)""",[[long(x) for x in self.trip_ids]])
-        for row in cur.fetchall():
-            timedemandgroup_id = row[0]
-            timedemandgroup = self.riddb.timedemandgroups[timedemandgroup_id]
-            assert len(timedemandgroup) == len(self.pattern.stop_ids)
-            timepatterns.append( (timedemandgroup_id,timedemandgroup))  
+        timedemandgroup_ids = set([])
+        for trip_id in self.trip_ids:
+            timedemandgroup_id = self.riddb.timedemandgroup_for_trip[trip_id]
+            if timedemandgroup_id in timedemandgroup_ids:
+                continue
+            timedemandgroup_ids.add(timedemandgroup_id)
+            drivetimes,stopwaittimes = self.riddb.timedemandgroups[timedemandgroup_id]
+            assert len(drivetimes) == len(self.pattern.stop_ids)
+            assert len(stopwaittimes) == len(self.pattern.stop_ids)
+            timepatterns.append( (timedemandgroup_id,zip(drivetimes,stopwaittimes) ))
         return timepatterns
 
     def getattributes(self):
@@ -128,9 +141,9 @@ GROUP BY validfrom,bitcalendar
 ORDER BY service_id
 );""") #Compile servicecelandar
         cur.close()
-        self.timedemandgroups = {}
-        for timedemandgroup_id,timedemandgroup in self.gettimepatterns():
-            self.timedemandgroups[timedemandgroup_id] = timedemandgroup
+        self.timedemandgroups = {} # a map from integer IDs to tuples of (0-based runtimes, dwelltimes)
+        self.timedemandgroup_for_trip = {} # which time demand group ID each trip uses
+        self.trip_begin_times = {} # time offsets to produce materialized trips from their time demand groups
       
     def date_range(self):
         cur = self.conn.cursor()
@@ -152,7 +165,7 @@ FROM transfers
 WHERE from_stop_id = %s AND distance < %s
 ORDER BY from_stop_id,to_stop_id
 )UNION(
-SELECT to_stop_id::text,from_stop_id::text,9,distance
+SELECT to_stop_id::text as from_stop_id,from_stop_id::text as to_stop_id,9,distance
 FROM transfers
 WHERE to_stop_id = %s AND distance < %s
 ORDER BY from_stop_id,to_stop_id)) as x
@@ -257,11 +270,7 @@ WHERE j.id = %s
         """ generator that takes a list of trip_ids 
         and returns all timedemandgroups in order for those trip_ids """
         for trip_id in trip_ids :
-            query = """SELECT journeypatternref||':'||timedemandgroupref,departuretime FROM journey WHERE journey.id = %s""" 
-            c = self.conn.cursor()
-            c.execute(query,[trip_id])
-            for (timedemandgroupref,departuretime) in c.fetchall():
-                yield (timedemandgroupref,departuretime)
+            yield (self.timedemandgroup_for_trip[trip_id],self.trip_begin_times[trip_id])
 
     def fetch_stop_times(self,trip_ids) :
         """ generator that takes a list of trip_ids 
@@ -315,6 +324,13 @@ ORDER BY journeypatternref,timedemandgroupref""")
         cur = self.conn.cursor()
         cur.execute(query)
         return [x[0] for x in cur.fetchall()]
+
+    def agency_timezones(self):
+        query = "SELECT DISTINCT timezone FROM operator"
+        cur = self.conn.cursor()
+        cur.execute(query)
+        return list(x[0] for x in cur.fetchall())
+
     def agency(self,agency_id):
         query = "SELECT operator_id,name,url,phone,timezone FROM operator WHERE operator_id = %s"
         cur = self.conn.cursor()
@@ -324,66 +340,83 @@ ORDER BY journeypatternref,timedemandgroupref""")
             return None
         return res[0]
 
-    def compile_trip_bundles(self, reporter=None):
+    def get_cursor(self):
+        return self.conn.cursor()
+
+    def compile_trip_bundles(self, maxtrips=None, reporter=None):
         
-        c = self.conn.cursor()
+        c = self.get_cursor()
+        c.execute("""SELECT count(*) FROM journey JOIN servicecalendar USING (availabilityconditionref)""")
+        n_trips = c.fetchone()[0]
+        print str(n_trips) + ' trips'
 
         patterns = {}
         bundles = {}
 
-        c.execute( """SELECT servicejourney.journeypatternref,pc.name,ondemand,array_agg(servicejourney.id::text) as trips,array_agg(distinct servicejourney.timedemandgroupref),
-min(min_time),max(max_time)
-                      FROM servicejourney LEFT JOIN productcategory as pc ON (productcategoryref = pc.id),
-(SELECT DISTINCT ON (timedemandgroupref,journeypatternref) timedemandgroupref,journeypatternref,
-count(distinct pointintimedemandgroup.pointorder) as timedemandgrouppoints,
-count(distinct pointinjourneypattern.pointorder) as journeypatternpoints,
-min(departuretime) as min_time,
-max(departuretime+totaldrivetime+stopwaittime) as max_time
-FROM 
-servicejourney JOIN pointintimedemandgroup USING (timedemandgroupref)
-               JOIN pointinjourneypattern USING (journeypatternref,pointorder)
-GROUP BY journeypatternref,timedemandgroupref) as lengths
-WHERE servicejourney.timedemandgroupref = lengths.timedemandgroupref AND servicejourney.journeypatternref = lengths.journeypatternref
-                      GROUP BY servicejourney.journeypatternref,timedemandgrouppoints,journeypatternpoints,pc.name,ondemand""" )
+        c.execute("""
+SELECT
+j.id::text,
+j.departuretime+tpt.totaldrivetime as arrival_time,
+j.departuretime+tpt.totaldrivetime+tpt.stopwaittime as departure_time,
+jpt.pointref::text as stop_id,
+l.id::text as route_id,
+CASE WHEN (forboarding = false) THEN 1
+     WHEN (requeststop = true) THEN 2
+     ELSE 0 END as pickup_type,
+     CASE WHEN (foralighting = false) THEN 1
+     WHEN (requeststop = true)  THEN 2
+     ELSE 0 END as drop_off_type,
+iswaitpoint::int4 as timepoint,
+d.name as headsign,
+p.name as productcategory,
+ondemand as ondemands
+FROM journey as j JOIN servicecalendar as c USING (availabilityconditionref)
+                  JOIN pointinjourneypattern as jpt USING (journeypatternref)
+                  JOIN scheduledstoppoint as sp ON (sp.id = pointref)
+                  JOIN pointintimedemandgroup as tpt USING (timedemandgroupref,pointorder)
+                  JOIN journeypattern as jp ON (journeypatternref = jp.id)
+                  JOIN route as r ON (routeref = r.id)
+                  JOIN line as l ON (lineref = l.id)
+                  JOIN destinationdisplay as d ON (jp.destinationdisplayref = d.id)
+                  LEFT JOIN productcategory as p ON (productcategoryref = p.id)
+WHERE
+tpt.totaldrivetime is not null
+ORDER BY j.id,pointorder
+""")
+        timedemandgroup_id_for_signature = {} # map from timedemandgroup signatures to IDs
+        trip = []
+        x = c.fetchone()
         i = 0
-        routes = c.fetchall()
-        for journeypatternref,productcategory,ondemand,trips,timedemandgroups,min_time,max_time in routes:
-            i+=1
-            if reporter and i%(len(routes)//50+1)==0: reporter.write( "%d/%d trips grouped by %d patterns\n"%(i,len(routes),len(bundles)))
-            d = self.conn.cursor()
-            d.execute("""
-SELECT journeypatternref,array_agg(pointref::text ORDER BY pointorder) as stop_ids,
-                         array_agg(pickup_type ORDER BY pointorder) as pickup_types,
-                         array_agg(drop_off_type ORDER BY pointorder) as drop_off_types,
-                         array_agg(iswaitpoint::int4 ORDER BY pointorder) as timepoints,
-       unnest(array_agg(distinct headsign)) as headsign
-FROM
-(SELECT
-       journeypatternref,
-       jp.pointref,
-       jp.pointorder,
-       iswaitpoint,
-       CASE WHEN (forboarding = false) THEN 1
-            WHEN (requeststop = true) THEN 2
-            ELSE 0 END as pickup_type,
-       CASE WHEN (foralighting = false) THEN 1
-            WHEN (requeststop = true)  THEN 2
-            ELSE 0 END as drop_off_type,
-       d.name as headsign
-       FROM pointinjourneypattern as jp JOIN journeypattern AS j ON (j.id = journeypatternref)
-                                        JOIN destinationdisplay AS d ON (d.id = j.destinationdisplayref)
-,pointintimedemandgroup as tp,scheduledstoppoint as sp
-       WHERE jp.pointref = sp.id AND jp.pointorder = tp.pointorder AND timedemandgroupref = %s AND journeypatternref = %s) as x
-GROUP BY journeypatternref
-""",[timedemandgroups[0],journeypatternref])
-            try:
-                journeypatternref,stop_ids,pickup_types,drop_off_types,timepoints,headsign = d.fetchone()
-            except:
-                print [timedemandgroups[0],journeypatternref]
-                continue
-            pattern_signature = (tuple(stop_ids),tuple(pickup_types),tuple(drop_off_types),tuple(timepoints),headsign)
-            if productcategory is not None and len(productcategory) < 1:
-                productcategory = None
+        while x is not None:
+            if reporter and i%(n_trips//50+1)==0: reporter.write( "%d/%d trips grouped by %d patterns\n"%(i,n_trips,len(bundles)))
+            trip.append(x)
+            trip_id = x[0]
+            x = c.fetchone()
+            while x is not None and x[0] == trip_id:
+                trip.append(x)
+                x = c.fetchone()
+            i += 1
+            trip_ids, arrival_times, departure_times, stop_ids, route_ids, pickup_types, drop_off_types,timepoints,headsigns,productcategories,ondemands = (list(x) for x in zip(*trip)) # builtin for zip(*d)?
+            trip = []
+            timepoints[0] = 1
+            trip_begin_time = arrival_times[0]
+            self.trip_begin_times[trip_id] = trip_begin_time
+            drive_times = [arrival_time - trip_begin_time for arrival_time in arrival_times]
+            dwell_times = [departure_time - arrival_time for departure_time, arrival_time in zip(departure_times, arrival_times)]
+            timedemandgroup_signature = (tuple(drive_times), tuple(dwell_times))
+            if timedemandgroup_signature in timedemandgroup_id_for_signature :
+                timedemandgroup_id = timedemandgroup_id_for_signature[timedemandgroup_signature]
+            else:
+                timedemandgroup_id = len(self.timedemandgroups)
+                self.timedemandgroups[timedemandgroup_id] = (drive_times, dwell_times)
+                timedemandgroup_id_for_signature[timedemandgroup_signature] = timedemandgroup_id
+            self.timedemandgroup_for_trip[trip_id] = timedemandgroup_id
+            route_id = route_ids[0]
+            headsign = headsigns[0] or ''
+            ondemand = ondemands[0]
+            productcategory = productcategories[0] or ''
+            pattern_signature = (tuple(stop_ids), tuple(drop_off_types), tuple(pickup_types), tuple(timepoints), route_id, headsign, productcategory)
+
             if pattern_signature not in patterns:
                 pattern = Pattern( len(patterns), stop_ids,pickup_types,drop_off_types,productcategory,ondemand,timepoints)
                 patterns[pattern_signature] = pattern
@@ -391,15 +424,14 @@ GROUP BY journeypatternref
                 pattern = patterns[pattern_signature]
                 
             if pattern not in bundles:
-                bundles[pattern] = TripBundle( self, pattern ,min_time=min_time,max_time=max_time)
-            for trip_id in trips:
-                bundles[pattern].add_trip( trip_id )
-                if min_time < bundles[pattern].min_time:
-                    bundles[pattern].min_time = min_time
-                if max_time > bundles[pattern].max_time:  
-                    bundles[pattern].max_time = max_time
-
+                bundles[pattern] = TripBundle( self, pattern )
+            
+            bundles[pattern].add_trip( trip_id )
+        print "%d unique time demand types." % (len(timedemandgroup_id_for_signature))
+        print "%d time demand types." % (len(self.timedemandgroups))
+        del(timedemandgroup_id_for_signature)
         c.close()
         
-        return bundles.values()
+        return [y for x, y in sorted(bundles.items())]
+
 
