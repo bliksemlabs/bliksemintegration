@@ -131,7 +131,9 @@ create table Line(
     publiccode varchar(255) NOT NULL,
     TransportMode varchar(255) NOT NULL,
     name varchar(255),
-    monitored boolean
+    monitored boolean,
+    color_shield varchar(6),
+    color_text varchar(6)
 );
 
 create table Route(
