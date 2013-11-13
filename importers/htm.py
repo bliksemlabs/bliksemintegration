@@ -2,6 +2,7 @@ from kv1_811 import *
 from inserter import insert,version_imported,reject
 from bs4 import BeautifulSoup
 import urllib2
+from settings.const import *
 from datetime import datetime,timedelta
 import logging
 
@@ -15,6 +16,32 @@ def getDataSource():
                           'description' : 'HTM Rail KV1 leveringen',
                           'email'       : None,
                           'url'         : None}}
+
+def setLineColors():
+    conn = psycopg2.connect(database_connect)
+    cur = conn.cursor()
+    cur.execute("""
+UPDATE line SET color_shield = 'a30e11', color_text = 'ffffff' WHERE publiccode = '1' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '005522', color_text = 'ffffff' WHERE publiccode = '2' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '862175', color_text = 'ffffff' WHERE publiccode = '3' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'f27d00', color_text = '000000' WHERE publiccode = '4' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '59e759', color_text = '000000' WHERE publiccode = '5' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '005883', color_text = 'ffffff' WHERE publiccode = '6' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '6040a0', color_text = 'ffffff' WHERE publiccode = '8' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '96af0e', color_text = '000000' WHERE publiccode = '9' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '465c6b', color_text = 'ffffff' WHERE publiccode = '10' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '794629', color_text = 'ffffff' WHERE publiccode = '11' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '8a3766', color_text = 'ffffff' WHERE publiccode = '12' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'ee7396', color_text = '000000' WHERE publiccode = '15' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'fb6914', color_text = '000000' WHERE publiccode = '16' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '00617e', color_text = 'ffffff' WHERE publiccode = '17' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'f1d150', color_text = '000000' WHERE publiccode = '19' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '000000', color_text = 'f7ff00' WHERE publiccode like 'N%' and transportmode = 'BUS' and operator_id like 'HTM:%';
+""")
+    cur.close()
+    conn.commit()
+    conn.close()
+   
 
 def getOperator():
     return { 'HTM' :          {'privatecode' : 'HTM',
@@ -88,6 +115,7 @@ def import_zip(path,filename,version):
         data['NOTICEGROUP'] = {}
         insert(data)
         conn.close()
+        setLineColors()
     except:
         raise
 
