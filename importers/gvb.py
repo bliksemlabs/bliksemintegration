@@ -1,5 +1,6 @@
 from kv1_811 import *
 from inserter import insert,version_imported,versions_imported,getConnection
+from settings.const import *
 import urllib2
 from lxml import etree
 import logging
@@ -25,6 +26,26 @@ def getOperator():
                                'url'         : 'http://www.gvb.nl',
                                'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}}
+
+def setLineColors():
+    conn = psycopg2.connect(database_connect)
+    cur = conn.cursor()
+    cur.execute("""
+UPDATE line set color_shield = '187a36' where operator_id = 'GVB:50';
+UPDATE line set color_text = 'ffffff' where operator_id = 'GVB:50';
+
+UPDATE line set color_shield = 'FF6600' where operator_id = 'GVB:51';
+UPDATE line set color_text = '000000' where operator_id = 'GVB:51';
+
+UPDATE line set color_shield = 'd81118' where operator_id = 'GVB:53';
+UPDATE line set color_text = 'ffffff' where operator_id = 'GVB:53';
+
+UPDATE line set color_shield = 'fff200' where operator_id = 'GVB:54';
+UPDATE line set color_text = '000000' where operator_id = 'GVB:54';
+""")
+    cur.close()
+    conn.commit()
+    conn.close()
 
 def calculateTimeDemandGroupsGVB(conn):
     cur = conn.cursor('timdemgrps',cursor_factory=psycopg2.extras.RealDictCursor)
@@ -91,6 +112,7 @@ def import_zip(path,filename,meta=None):
         data['NOTICEGROUP'] = {}
         conn.close()
         insert(data)
+        setLineColors()
     except:
         raise
 
