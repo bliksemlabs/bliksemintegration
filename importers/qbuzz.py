@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
 import logging 
+from settings.const import *
 
 logger = logging.getLogger("importer")
 
@@ -32,6 +33,43 @@ SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validdate) as fromdate FROM
     rows = cur.fetchall()
     cur.close()
     return rows
+
+def setLineColors():
+    conn = psycopg2.connect(database_connect)
+    cur = conn.cursor()
+    cur.execute("""
+update line set color_shield = '2B9F54' where operator_id = 'QBUZZ:g001';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g001';
+
+update line set color_shield = '2B9F54' where operator_id = 'QBUZZ:g002';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g002';
+
+update line set color_shield = '68a0e4' where operator_id = 'QBUZZ:g003';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g003';
+
+update line set color_shield = '187b99' where operator_id = 'QBUZZ:g004';
+update line set color_text = 'ffffff' where operator_id = 'QBUZZ:g004';
+
+update line set color_shield = 'EC5A5D' where operator_id = 'QBUZZ:g005';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g005';
+
+update line set color_shield = 'ec5a5d' where operator_id = 'QBUZZ:g006';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g006';
+
+update line set color_shield = 'f7df81' where operator_id = 'QBUZZ:g008';
+update line set color_text = '474747' where operator_id = 'QBUZZ:g008';
+
+update line set color_shield = 'f2a5f3' where operator_id = 'QBUZZ:g011';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g011';
+
+update line set color_shield = 'dc82e6' where operator_id = 'QBUZZ:g015';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g015';
+
+update line set color_shield = 'dc82e6' where operator_id = 'QBUZZ:g015';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g015';""")
+    cur.close()
+    conn.commit()
+    conn.close()
 
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
@@ -63,6 +101,7 @@ def import_zip(path,filename,version):
         data['NOTICEGROUP'] = {}
         insert(data)
         conn.close()
+        setLineColors()
     except:
         raise
 
