@@ -3,6 +3,7 @@ from inserter import insert,version_imported,reject
 from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
+from htm import setLineColors
 import logging
 
 logger = logging.getLogger("importer")
@@ -87,6 +88,7 @@ def import_zip(path,filename,version):
         data['NOTICEGROUP'] = {}
         insert(data)
         conn.close()
+        setLineColors()
     except:
         raise
 
