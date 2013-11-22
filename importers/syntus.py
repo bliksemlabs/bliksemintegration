@@ -16,11 +16,18 @@ def getDataSource():
                           'url'         : None}}
 
 def getOperator():
-    return { 'SYNTUS' :          {'privatecode' : 'SYNTUS',
+    return { 'SYNTUS' :        {'privatecode' : 'SYNTUS',
                                'operator_id' : 'SYNTUS',
                                'name'        : 'Syntus',
                                'phone'       : '0314-350111',
                                'url'         : 'http://www.syntus.nl',
+                               'timezone'    : 'Europe/Amsterdam',
+                               'language'    : 'nl'},
+             'TWENTS' :       {'privatecode' : 'TWENTS',
+                               'operator_id' : 'TWENTS',
+                               'name'        : 'Twents (Syntus)',
+                               'phone'       : '088-0331360',
+                               'url'         : 'http://www.syntustwente.nl',
                                'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}}
 
@@ -51,7 +58,7 @@ def import_zip(path,filename,version):
                               'enddate'       : meta['enddate'],
                               'description'   : filename}
         data['DESTINATIONDISPLAY'] = getDestinationDisplays(conn)
-        data['LINE'] = getLines(conn)
+        data['LINE'] = getLineWithGeneratedNames(conn)
         data['STOPPOINT'] = getStopPoints(conn)
         data['STOPAREA'] = getStopAreas(conn)
         data['AVAILABILITYCONDITION'] = getAvailabilityConditionsUsingOperday(conn)
