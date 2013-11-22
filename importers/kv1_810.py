@@ -317,6 +317,122 @@ confinrel LEFT JOIN conarea using (dataownercode,concessionareacode)
     cur.close()
     return administrativezones
 
+def getLineWithGeneratedNames(conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    lines = {}
+    cur.execute("""
+SELECT DISTINCT ON (operator_id) 
+operator_id,
+CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATERBUS'
+     WHEN (dataownercode = 'HTM' and transportmode = 'BUS' and cast(lineplanningnumber as integer) <= 42) THEN 'HTMBUZZ'
+     WHEN (dataownercode = 'CXX' and lineplanningnumber in ('X058'))                         THEN 'NIAG'
+     WHEN (dataownercode = 'CXX' and substring(lineplanningnumber,1,1) = 'U')           THEN 'GVU'
+     WHEN (dataownercode = 'CXX' and substring(lineplanningnumber,1,1) IN ('A','X'))    THEN 'BRENG'
+     WHEN (dataownercode = 'CXX' and substring(lineplanningnumber,1,1) = 'L')           THEN 'HERMES'
+     WHEN (dataownercode = 'SYNTUS' and description like 'TW%')           THEN 'TWENTS'
+     ELSE dataownercode END as operatorref, 
+privatecode,publiccode,TransportMode,name
+FROM 
+((SELECT
+u.dataownercode,l.lineplanningnumber,l.description,
+u.dataownercode||':'||l.lineplanningnumber as operator_id,
+l.lineplanningnumber as privatecode,
+linepublicnumber as publiccode,
+transporttype as TransportMode,
+replace( CASE WHEN (terug.destnamemain is null) THEN concat_ws(' - ',u.name,dest_heen.destnamefull)
+     ELSE concat_ws(' - ',dest_heen.destnamefull,terug.destnamemain) END,linepublicnumber||' ','') as name,
+1 as priority
+ FROM 
+ ((SELECT DISTINCT ON (version,dataownercode,lineplanningnumber) * FROM (
+  SELECT version,dataownercode,lineplanningnumber,journeypatterncode,count((version, dataownercode, organizationalunitcode, schedulecode, 
+scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
+  FROM
+    (SELECT DISTINCT ON (version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
+      * FROM pujopass JOIN jopa USING (version,dataownercode,lineplanningnumber,journeypatterncode)
+        WHERE direction = 1
+        ORDER BY version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber ASC) as schedpujoh
+    JOIN operday USING (version,dataownercode,organizationalunitcode, schedulecode, scheduletypecode)
+    GROUP BY version,dataownercode,lineplanningnumber,journeypatterncode) AS journeypatterns_heen
+  ORDER BY version,dataownercode,lineplanningnumber,journeycount DESC) as heen_distribution
+  JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumber,journeypatterncode) *
+        FROM JOPATILI
+        ORDER BY version,dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder ASC) as jopatiliheen
+  JOIN dest as dest_heen USING (version,dataownercode,destcode)
+  USING (version,dataownercode,lineplanningnumber,journeypatterncode))
+LEFT JOIN 
+ ((SELECT DISTINCT ON (version,dataownercode,lineplanningnumber) * FROM (
+  SELECT version,dataownercode,lineplanningnumber,journeypatterncode,count((version, dataownercode, organizationalunitcode, schedulecode, 
+scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
+  FROM
+    (SELECT DISTINCT ON (version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
+      * FROM pujopass JOIN jopa USING (version,dataownercode,lineplanningnumber,journeypatterncode)
+        WHERE direction = 2
+        ORDER BY version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber ASC) as schedpujot
+    JOIN operday USING (version,dataownercode,organizationalunitcode, schedulecode, scheduletypecode)
+    GROUP BY version,dataownercode,lineplanningnumber,journeypatterncode) AS journeypatterns_terug
+  ORDER BY version,dataownercode,lineplanningnumber,journeycount DESC) as terug_distribution
+  JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumber,journeypatterncode) *
+        FROM JOPATILI
+        ORDER BY version,dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder ASC) as jopatiliterug
+  JOIN dest as dest_terug USING (version,dataownercode,destcode)
+  USING (version,dataownercode,lineplanningnumber,journeypatterncode)) as terug USING (version,dataownercode,lineplanningnumber)
+  JOIN (SELECT version,dataownercode,userstopcode,name from usrstop) as u ON (u.version = jopatiliheen.version AND u.dataownercode = 
+jopatiliheen.dataownercode AND jopatiliheen.userstopcodebegin = u.userstopcode)
+  JOIN line as l ON (l.version = u.version AND l.dataownercode = u.dataownercode AND l.lineplanningnumber = jopatiliheen.lineplanningnumber))
+UNION 
+(SELECT
+u.dataownercode,l.lineplanningnumber,l.description,
+u.dataownercode||':'||l.lineplanningnumber as operator_id,
+l.lineplanningnumber as privatecode,
+linepublicnumber as publiccode,
+transporttype as TransportMode,
+replace( CASE WHEN (terug.destnamemain is null) THEN concat_ws(' - ',u.name,dest_heen.destnamefull)
+     ELSE concat_ws(' - ',dest_heen.destnamefull,terug.destnamemain) END,linepublicnumber||' ','') as name,
+2 as priority
+ FROM 
+ ((SELECT DISTINCT ON (version,dataownercode,lineplanningnumber) * FROM (
+  SELECT version,dataownercode,lineplanningnumber,journeypatterncode,count((version, dataownercode, organizationalunitcode, schedulecode, 
+scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
+  FROM
+    (SELECT DISTINCT ON (version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
+      * FROM pujopass JOIN jopa USING (version,dataownercode,lineplanningnumber,journeypatterncode)
+        WHERE direction = 2
+        ORDER BY version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber ASC) as schedpujoh
+    JOIN operday USING (version,dataownercode,organizationalunitcode, schedulecode, scheduletypecode)
+    GROUP BY version,dataownercode,lineplanningnumber,journeypatterncode) AS journeypatterns_heen
+  ORDER BY version,dataownercode,lineplanningnumber,journeycount DESC) as heen_distribution
+  JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumber,journeypatterncode) *
+        FROM JOPATILI
+        ORDER BY version,dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder ASC) as jopatiliheen
+  JOIN dest as dest_heen USING (version,dataownercode,destcode)
+  USING (version,dataownercode,lineplanningnumber,journeypatterncode))
+LEFT JOIN 
+ ((SELECT DISTINCT ON (version,dataownercode,lineplanningnumber) * FROM (
+  SELECT version,dataownercode,lineplanningnumber,journeypatterncode,count((version, dataownercode, organizationalunitcode, schedulecode, 
+scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
+  FROM
+    (SELECT DISTINCT ON (version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
+      * FROM pujopass JOIN jopa USING (version,dataownercode,lineplanningnumber,journeypatterncode)
+        WHERE direction = 1
+        ORDER BY version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber ASC) as schedpujot
+    JOIN operday USING (version,dataownercode,organizationalunitcode, schedulecode, scheduletypecode)
+    GROUP BY version,dataownercode,lineplanningnumber,journeypatterncode) AS journeypatterns_terug
+  ORDER BY version,dataownercode,lineplanningnumber,journeycount DESC) as terug_distribution
+  JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumber,journeypatterncode) *
+        FROM JOPATILI
+        ORDER BY version,dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder ASC) as jopatiliterug
+  JOIN dest as dest_terug USING (version,dataownercode,destcode)
+  USING (version,dataownercode,lineplanningnumber,journeypatterncode)) as terug USING (version,dataownercode,lineplanningnumber)
+  JOIN (SELECT version,dataownercode,userstopcode,name from usrstop) as u ON (u.version = jopatiliheen.version AND u.dataownercode = 
+jopatiliheen.dataownercode AND jopatiliheen.userstopcodebegin = u.userstopcode)
+  JOIN line as l ON (l.version = u.version AND l.dataownercode = u.dataownercode AND l.lineplanningnumber = jopatiliheen.lineplanningnumber))) as x
+ORDER BY operator_id,priority
+""")
+    for row in cur.fetchall():
+        lines[row['operator_id']] = row
+    cur.close()
+    return lines
+
 def getLines(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     lines = {}
@@ -328,6 +444,7 @@ CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATE
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) = 'U')           THEN 'GVU'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) IN ('A','X'))    THEN 'BRENG'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) = 'L')           THEN 'HERMES'
+     WHEN (dataownercode = 'QBUZZ' and substring(line.lineplanningnumber,1,1) = 'u')         THEN 'UOV'
      ELSE dataownercode END as operatorref, 
 dataownercode||':'||lineplanningnumber as operator_id,
 lineplanningnumber as privatecode,
