@@ -21,21 +21,31 @@ def setLineColors():
     conn = psycopg2.connect(database_connect)
     cur = conn.cursor()
     cur.execute("""
-UPDATE line SET color_shield = 'a30e11', color_text = 'ffffff' WHERE publiccode = '1' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = '005522', color_text = 'ffffff' WHERE publiccode = '2' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = '862175', color_text = 'ffffff' WHERE publiccode = '3' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = 'f27d00', color_text = '000000' WHERE publiccode = '4' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+update line set name= replace(name,publiccode||' ','') where operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'e72419', color_text = 'ffffff' WHERE publiccode = '1' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'ffc52d', color_text = '000000' WHERE publiccode = '2' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'be1fa1', color_text = 'ffffff' WHERE publiccode = '3' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'ef7100', color_text = '000000' WHERE publiccode = '4' and transportmode = 'TRAM' and operator_id like 'HTM:%';
 UPDATE line SET color_shield = '59e759', color_text = '000000' WHERE publiccode = '5' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = '005883', color_text = 'ffffff' WHERE publiccode = '6' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '009fe3', color_text = '000000' WHERE publiccode = '6' and transportmode = 'TRAM' and operator_id like 'HTM:%';
 UPDATE line SET color_shield = '6040a0', color_text = 'ffffff' WHERE publiccode = '8' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = '96af0e', color_text = '000000' WHERE publiccode = '9' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '8dbb00', color_text = '000000' WHERE publiccode = '9' and transportmode = 'TRAM' and operator_id like 'HTM:%';
 UPDATE line SET color_shield = '465c6b', color_text = 'ffffff' WHERE publiccode = '10' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = '794629', color_text = 'ffffff' WHERE publiccode = '11' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = '8a3766', color_text = 'ffffff' WHERE publiccode = '12' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = 'ee7396', color_text = '000000' WHERE publiccode = '15' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = 'fb6914', color_text = '000000' WHERE publiccode = '16' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = '00617e', color_text = 'ffffff' WHERE publiccode = '17' and transportmode = 'TRAM' and operator_id like 'HTM:%';
-UPDATE line SET color_shield = 'f1d150', color_text = '000000' WHERE publiccode = '19' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'b27f66', color_text = '000000' WHERE publiccode = '11' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'e39fc9', color_text = '000000' WHERE publiccode = '12' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '8c7ad2', color_text = '000000' WHERE publiccode = '15' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '773d29', color_text = 'ffffff' WHERE publiccode = '16' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '003186', color_text = 'ffffff' WHERE publiccode = '17' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '00a788', color_text = '000000' WHERE publiccode = '19' and transportmode = 'TRAM' and operator_id like 'HTM:%';
+
+UPDATE line SET color_shield = '009fe3', color_text = '000000' WHERE publiccode = '18' and transportmode = 'BUS' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'ef7100', color_text = '000000' WHERE publiccode = '21' and transportmode = 'BUS' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'e39fc9', color_text = '000000' WHERE publiccode = '22' and transportmode = 'BUS' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '003186', color_text = 'ffffff' WHERE publiccode = '23' and transportmode = 'BUS' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'be1fa1', color_text = 'ffffff' WHERE publiccode = '24' and transportmode = 'BUS' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '773d29', color_text = 'ffffff' WHERE publiccode = '25' and transportmode = 'BUS' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = '8dbb00', color_text = '000000' WHERE publiccode = '26' and transportmode = 'BUS' and operator_id like 'HTM:%';
+UPDATE line SET color_shield = 'e72419', color_text = 'ffffff' WHERE publiccode = '28' and transportmode = 'BUS' and operator_id like 'HTM:%';
 UPDATE line SET color_shield = '000000', color_text = 'f7ff00' WHERE publiccode like 'N%' and transportmode = 'BUS' and operator_id like 'HTM:%';
 """)
     cur.close()
@@ -100,7 +110,7 @@ def import_zip(path,filename,version):
                               'enddate'       : meta['enddate'],
                               'description'   : filename}
         data['DESTINATIONDISPLAY'] = getDestinationDisplays(conn)
-        data['LINE'] = getLines(conn)
+        data['LINE'] = getLineWithGeneratedNames(conn)
         data['STOPPOINT'] = getStopPoints(conn)
         data['STOPAREA'] = getStopAreas(conn)
         data['AVAILABILITYCONDITION'] = getAvailabilityConditionsUsingOperday(conn)

@@ -73,7 +73,7 @@ def import_zip(path,filename,version):
                               'enddate'       : meta['enddate'],
                               'description'   : filename}
         data['DESTINATIONDISPLAY'] = getDestinationDisplays(conn)
-        data['LINE'] = getLines(conn)
+        data['LINE'] = getLineWithGeneratedNames(conn)
         data['STOPPOINT'] = getStopPoints(conn)
         data['STOPAREA'] = getStopAreas(conn)
         data['AVAILABILITYCONDITION'] = getAvailabilityConditionsUsingOperday(conn)
