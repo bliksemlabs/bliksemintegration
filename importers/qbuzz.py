@@ -23,6 +23,13 @@ def getOperator():
                                'phone'       : '0900-7289965',
                                'url'         : 'http://www.qbuzz.nl',
                                'timezone'    : 'Europe/Amsterdam',
+                               'language'    : 'nl'},
+             'UOV' :          {'privatecode' : 'UOV',
+                               'operator_id' : 'UOV',
+                               'name'        : 'U-OV',
+                               'phone'       : '0900-7289965',
+                               'url'         : 'http://www.u-ov.info',
+                               'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}}
 
 def getMergeStrategies(conn):
