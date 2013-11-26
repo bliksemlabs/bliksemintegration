@@ -157,6 +157,7 @@ ORDER BY service_id
         if maxdistance is None:
             maxdistance = 999999
         cur.execute("""
+SELECT * FROM (
 SELECT DISTINCT ON (from_stop_id,to_stop_id)
 from_stop_id,to_stop_id,9,distance
 FROM
@@ -169,7 +170,8 @@ SELECT to_stop_id::text as from_stop_id,from_stop_id::text as to_stop_id,9,dista
 FROM transfers
 WHERE to_stop_id = %s AND distance < %s
 ORDER BY from_stop_id,to_stop_id)) as x
-ORDER BY from_stop_id,to_stop_id
+ORDER BY from_stop_id,to_stop_id) as y
+ORDER BY distance ASC
 """,[from_stop_id,maxdistance]*2)
         res = cur.fetchall()
         cur.close()
