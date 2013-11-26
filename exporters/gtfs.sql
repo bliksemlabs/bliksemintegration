@@ -60,7 +60,9 @@ shape_id::text,
 CASE WHEN (hasliftorramp is null and lowfloor is null) THEN 0::int4
      WHEN (hasliftorramp or lowfloor) THEN 1::int4
      ELSE 2::int4 END as wheelchair_accessible,
-CASE WHEN (bicycleallowed) THEN 2 ELSE NULL END as trip_bikes_allowed
+CASE WHEN (bicycleallowed) THEN 1 
+     WHEN (not bicycleallowed) THEN 2
+     ELSE NULL END as bikes_allowed
 FROM (select *,count(id) over (PARTITION BY availabilityconditionref,blockref) as  blockcount,
 (blockref not in (SELECT distinct j1.blockref FROM 
 (SELECT journey.privatecode,blockref,departuretime,departuretime+max(totaldrivetime) as arrivaltime,count(journey.id) OVER (PARTITION BY blockref 
@@ -151,7 +153,7 @@ s.name as stop_name,
 s.latitude as stop_lat,
 s.longitude as stop_lon,
 0 as location_type,
-CASE WHEN (s.operator_id not like 'RET:%' AND s.name != 'Petten, Campanula') THEN 'stoparea:'||stoparearef ELSE null END as parent_station,
+CASE WHEN (s.operator_id not like 'RET:%' AND s.name not in  ('Petten, Campanula','Okkenbroek, De Grote Brander','Nieuw-Heeten, Vlessendijk')) THEN 'stoparea:'||stoparearef ELSE null END as parent_station,
 CASE WHEN (stoparearef is null) THEN s.timezone ELSE NULL END as stop_timezone,
 restrictedmobilitysuitable::int4 as wheelchair_boarding,
 s.platformcode as platform_code,
