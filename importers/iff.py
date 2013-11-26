@@ -498,102 +498,72 @@ def getLines(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
 SELECT DISTINCT ON (operator_id)
-operator_id,privatecode,operatorref,publiccode,name,transportmode,monitored
-FROM
+operator_id,privatecode,operatorref,publiccode,name,transportmode,monitored FROM 
 (
 (SELECT DISTINCT ON (line_id)
-p.line_id as operator_id,
-p.line_id as privatecode,
+line_id as operator_id,
+line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
-CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
-     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
-'TRAIN' as transportmode,
-true as monitored,
-1 as priority
-FROM
-passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant)
-               LEFT JOIN (SELECT serviceid,min(servicedate) as startdate,max(servicedate) as enddate
-                          FROM timetable_validity LEFT JOIN footnote USING (footnote) GROUP BY footnote,serviceid) as v USING (serviceid)
-,trnsmode as m,company as c,
-(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder ASC) as begin,
-(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder DESC) as dest,
-station as begin_station,
-station as dest_station
-WHERE
-m.code = p.transmode and
-p.companynumber = c.company AND
-p.serviceid = begin.serviceid AND
-p.serviceid = dest.serviceid AND
-begin.station = begin_station.shortname AND
-dest.station = dest_station.shortname AND
-transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y') AND
-(current_date - startdate > 28 OR enddate-current_date > 60)
-ORDER BY line_id ASC,(servicenumber % 2 = 0),dest.stoporder DESC)
-UNION
-(SELECT DISTINCT ON (line_id)
-p.line_id as operator_id,
-p.line_id as privatecode,
-'IFF:'||upper(c.code) as operatorref,
-description as publiccode,
-CASE WHEN (p.servicename is not null) THEN p.servicename||' '||least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name)
-     ELSE least(begin_station.name,dest_station.name)||' <-> '||greatest(begin_station.name,dest_station.name)||' '||transmode||route(servicenumber,variant) END AS name,
-'TRAIN' as transportmode,
-true as monitored,
-2 as priority
-FROM
-passtimes as p LEFT JOIN timetable_service as s USING (serviceid,servicenumber,variant)
-               LEFT JOIN (SELECT serviceid,min(servicedate) as startdate,max(servicedate) as enddate
-                          FROM timetable_validity LEFT JOIN footnote USING (footnote) GROUP BY footnote,serviceid) as v USING (serviceid)
-,trnsmode as m,company as c,
-(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder ASC) as begin,
-(select distinct on (line_id,serviceid) serviceid,idx,station,stoporder from passtimes order by line_id,serviceid,stoporder DESC) as dest,
-station as begin_station,
-station as dest_station
-WHERE
-m.code = p.transmode and
-p.companynumber = c.company AND
-p.serviceid = begin.serviceid AND
-p.serviceid = dest.serviceid AND
-begin.station = begin_station.shortname AND
-dest.station = dest_station.shortname AND
-transmode not in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y') AND
-(current_date - startdate < 28 OR enddate-current_date < 40)
-ORDER BY line_id ASC,(servicenumber % 2 = 0),dest.stoporder DESC)
-UNION
-(SELECT DISTINCT ON (p.line_id)
-p.line_id as operator_id,
-p.line_id as privatecode,
-'IFF:'||upper(c.code) as operatorref,
-description as publiccode,
-least(begin_station.name,dest_station.name)||' <-> '||greatest(dest_station.name,begin_station.name) as name,
+CASE WHEN (servicename is not null) THEN servicename||' '||start.name||' <-> '||dest.name
+     WHEN (route(servicenumber,variant) is null) THEN start.name||' <-> '||dest.name
+     ELSE start.name||' <-> '||dest.name||' '||transmode||route(servicenumber,variant) END AS name,
 CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y')) THEN 'BUS'
      WHEN (transmode = 'NSM') THEN 'METRO'
      WHEN (transmode = 'NST') THEN 'TRAM'
-     ELSE 'BUS' END as transportmode,
-false as monitored,
-2 as priority
+     ELSE 'TRAIN' END as transportmode,
+CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y','NSM','NST')) THEN false
+     ELSE true END as monitored,
+0 as priority
 FROM
-trnsmode as m,passtimes as p,company as c,
-(select distinct on (line_id) line_id,station from passtimes
-   WHERE serviceid in (SELECT DISTINCT ON (line_id) serviceid from passtimes order by line_id,stoporder DESC)
-    order by line_id DESC,stoporder ASC) as begin,
-(select distinct on (line_id) line_id,station from passtimes WHERE serviceid in (SELECT DISTINCT ON (line_id) serviceid from passtimes order by 
-line_id,stoporder DESC)
-   order by line_id DESC,stoporder DESC) as dest,
-station as begin_station,
-station as dest_station
-WHERE
-m.code = p.transmode and
-p.companynumber = c.company AND
-p.line_id = begin.line_id AND
-p.line_id = dest.line_id AND
-begin.station = begin_station.shortname AND
-dest.station = dest_station.shortname AND
-transmode in ('NSS','NSB','B','NSM','NST','BNS','X','U','Y')
-ORDER BY 
-p.line_id,least(begin.station,dest.station),greatest(begin.station,dest.station))
-) as x
+(SELECT line_id,patterncode,count(servicedate) as patterncount FROM passtimes JOIN footnote USING (footnote) GROUP BY line_id,patterncode) as 
+patterns
+JOIN (SELECT DISTINCT ON (line_id,patterncode)
+      line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,patterncode,station as headsign,servicename FROM passtimes 
+      WHERE (coalesce(servicenumber,variant) = 0 or coalesce(servicenumber,variant) is null or coalesce(servicenumber,variant) % 2 = 1)
+      ORDER BY line_id,patterncode,idx DESC) as headsigns USING 
+(line_id,patterncode)
+JOIN (SELECT DISTINCT ON (line_id,patterncode)
+      line_id,patterncode,station as startplace FROM passtimes
+      WHERE (coalesce(servicenumber,variant) = 0 or coalesce(servicenumber,variant) is null or coalesce(servicenumber,variant) % 2 = 1)
+      ORDER BY line_id,patterncode,idx ASC) as startplace USING (line_id,patterncode)
+LEFT JOIN station AS dest ON (dest.shortname = headsign)
+LEFT JOIN station AS start ON (start.shortname = startplace)
+LEFT JOIN company AS c ON (c.company = companynumber)
+LEFT JOIN trnsmode as trnsmode ON (trnsmode.code = transmode)
+ORDER BY line_id,patterncount DESC)
+UNION
+(SELECT DISTINCT ON (line_id)
+line_id as operator_id,
+line_id as privatecode,
+'IFF:'||upper(c.code) as operatorref,
+description as publiccode,
+CASE WHEN (servicename is not null) THEN servicename||' '||start.name||' <-> '||dest.name
+     WHEN (route(servicenumber,variant) is null) THEN description||' '||least(start.name,dest.name)||' <-> '||greatest(least.name,dest.name)
+     ELSE start.name||' <-> '||dest.name||' '||transmode||route(servicenumber,variant) END AS name,
+CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y')) THEN 'BUS'
+     WHEN (transmode = 'NSM') THEN 'METRO'
+     WHEN (transmode = 'NST') THEN 'TRAM'
+     ELSE 'TRAIN' END as transportmode,
+CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y','NSM','NST')) THEN false
+     ELSE true END as monitored,
+1 as priority
+FROM
+(SELECT line_id,patterncode,count(servicedate) as patterncount FROM passtimes JOIN footnote USING (footnote) GROUP BY line_id,patterncode) as 
+patterns
+JOIN (SELECT DISTINCT ON (line_id,patterncode)
+      line_id,companynumber,serviceid,footnote,transmode,servicenumber,variant,patterncode,station as headsign,servicename FROM passtimes 
+      WHERE (coalesce(servicenumber,variant) = 0 or coalesce(servicenumber,variant) is null or coalesce(servicenumber,variant) % 2 = 0)
+      ORDER BY line_id,patterncode,idx DESC) as headsigns USING (line_id,patterncode)
+JOIN (SELECT DISTINCT ON (line_id,patterncode)
+      line_id,patterncode,station as startplace FROM passtimes
+      WHERE (coalesce(servicenumber,variant) = 0 or coalesce(servicenumber,variant) is null  or coalesce(servicenumber,variant) % 2 = 0)
+      ORDER BY line_id,patterncode,idx ASC) as startplace USING (line_id,patterncode)
+LEFT JOIN station AS dest ON (dest.shortname = headsign)
+LEFT JOIN station AS start ON (start.shortname = startplace)
+LEFT JOIN company AS c ON (c.company = companynumber)
+LEFT JOIN trnsmode as trnsmode ON (trnsmode.code = transmode)
+ORDER BY line_id,patterncount DESC)) AS Y
 ORDER BY operator_id,priority
 """)
     lines = {}
