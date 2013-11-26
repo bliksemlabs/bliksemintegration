@@ -53,88 +53,40 @@ def getAvailabilityConditionsFromCalendars(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     availabilityConditions = {}
     cur.execute("""
-SELECT DISTINCT ON (version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype)
+SELECT
 concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype) as operator_id,
 concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype) as privatecode,
 dataownercode||':'||organizationalunitcode as unitcode,
 '1' as versionref,
-description as name,
-cast(coalesce(t.validfrom,pg.validfrom) as text) as fromdate,
-cast(coalesce(t.validthru,pg.validthru) as text) as todate
+null as name,
+cast(min(coalesce(t.validfrom,pg.validfrom)) as text) as fromdate,
+cast(max(coalesce(t.validthru,pg.validthru)) as text) as todate
 FROM pegrval as pg JOIN tive as t USING (version, dataownercode, organizationalunitcode, periodgroupcode)
                    JOIN pujo as pu USING (version, dataownercode, organizationalunitcode, timetableversioncode, periodgroupcode, specificdaycode)
+GROUP BY version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype
 """)
     for row in cur.fetchall():
         availabilityConditions[row['operator_id']] = row
     cur.execute("""
-SELECT
-operator_id as availabilityconditionRef,
-array_agg(date ORDER BY date) as validdates,
+SELECT 
+concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,pujo.daytype) as availabilityconditionref,
+array_agg(DISTINCT validdate ORDER BY validdate) as validdates,
 true as isavailable
-FROM
-(
-SELECT
-operator_id,
-cast(date as text) as date
-FROM(
-	SELECT
-	operator_id,
-	CASE WHEN (validfrom != validthru) THEN cast (generate_series(validfrom,validthru,'1 day') as date) ELSE validfrom END as date,
-        daytype
-	FROM (
-		SELECT DISTINCT ON (operator_id,validfrom,validthru)
-		concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype) AS operator_id,
-		pj.daytype,
-		pg.validfrom as validfrom,
-		pg.validthru as validthru
-                FROM pegrval as pg JOIN tive as tv USING (version, dataownercode, organizationalunitcode, periodgroupcode)
-                                   JOIN pujo as pj USING (version, dataownercode, organizationalunitcode, timetableversioncode, periodgroupcode, specificdaycode)
-                ORDER BY operator_id,validfrom,validthru
-                ) as calendar
-	) as calendar_dates
-WHERE
-position( CAST(CASE WHEN extract(dow from date) = 0 THEN 7 ELSE extract(dow from date) END as text) in daytype) != 0
-AND NOT EXISTS (
-  SELECT 1 FROM (select cast(validdate as date) as excopdate,left(cast(daytypeason as text),1) as daytypeason from excopday) as excopday
-  WHERE date = excopdate and position( CAST(CASE WHEN extract(dow from date) = 0 THEN 7 ELSE extract(dow from date) END as text) in daytypeason) = 0
-  )
-UNION
-SELECT
-concat_ws(':',version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype) AS operator_id,
-cast(date as text) as date
-FROM(
-	SELECT
-	*,
-        (select distinct daytype 
-         FROM pujo
-         WHERE pujo.version = dates.version AND pujo.dataownercode = dates.dataownercode AND pujo.timetableversioncode = dates.timetableversioncode 
-                AND pujo.organizationalunitcode = dates.organizationalunitcode AND pujo.periodgroupcode = dates.periodgroupcode 
-                AND pujo.specificdaycode = dates.specificdaycode AND position( daytypeason in daytype) != 0)
-	FROM(
-		SELECT
-		*,
-		CASE WHEN (validfrom != validthru) THEN cast (generate_series(validfrom,validthru,'1 day') as date) ELSE validfrom END as date
-		FROM (
-			SELECT DISTINCT ON (version,dataownercode,timetableversioncode,organizationalunitcode,periodgroupcode,specificdaycode,validfrom,validthru)
-                        version,
-                        dataownercode,
-                        timetableversioncode,
-                        organizationalunitcode,
-                        periodgroupcode,
-                        specificdaycode,
-			coalesce(tv.validfrom,pg.validthru) as validfrom,
-			coalesce(tv.validthru,pg.validthru) as validthru
-			FROM pegrval as pg JOIN tive as tv USING (version, dataownercode, organizationalunitcode, periodgroupcode)
-                                           JOIN pujo as pj USING (version, dataownercode, organizationalunitcode, timetableversioncode, periodgroupcode, specificdaycode)
-			ORDER BY version,dataownercode,timetableversioncode,organizationalunitcode,periodgroupcode,specificdaycode,validfrom,validthru
-                        ) as calendar
-		) as dates,
-                 (select cast(validdate as date) as excopdate,left(cast(daytypeason as text),1) as daytypeason from excopday) as excopday
-	WHERE
-                excopdate = date) as x
-WHERE
-daytype is not null) as x
-GROUP BY operator_id
+FROM (SELECT DISTINCT version, dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype FROM pujo) as pujo 
+JOIN (
+SELECT 
+c.version,c.dataownercode,c.organizationalunitcode,c.periodgroupcode,timetableversioncode,c.specificdaycode,c.validdate,coalesce(daytypeason,extract(isodow 
+from c.validdate)) as daytype
+FROM 
+(SELECT 
+version,dataownercode,organizationalunitcode,periodgroupcode,timetableversioncode,specificdaycode,generate_series(coalesce(tv.validfrom,pv.validfrom),coalesce(tv.validthru,pv.validthru),interval 
+'1 day')::date as validdate
+FROM tive AS tv JOIN pegrval AS pv USING (version,dataownercode,organizationalunitcode,periodgroupcode)) as c
+LEFT JOIN excopday as ex ON (ex.version = c.version AND ex.dataownercode = c.dataownercode AND ex.specificdaycode = c.specificdaycode AND 
+c.validdate::date = ex.validdate::date)
+ORDER BY c.validdate desc) as calendar USING (version,dataownercode,organizationalunitcode,periodgroupcode,timetableversioncode,specificdaycode)
+WHERE position(calendar.daytype::integer::text in pujo.daytype) != 0
+GROUP BY availabilityconditionref
 ;""")
     for row in cur.fetchall():
         availabilityConditions[row['availabilityconditionref']]['DAYS'] = row
@@ -331,7 +283,8 @@ CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATE
      WHEN (dataownercode = 'CXX' and substring(lineplanningnumber,1,1) = 'L')           THEN 'HERMES'
      WHEN (dataownercode = 'SYNTUS' and description like 'TW%')           THEN 'TWENTS'
      ELSE dataownercode END as operatorref, 
-privatecode,publiccode,TransportMode,name
+privatecode,publiccode,TransportMode,
+CASE WHEN (publiccode != linename) THEN linename ELSE name END as name
 FROM 
 ((SELECT
 u.dataownercode,l.lineplanningnumber,l.description,
@@ -341,7 +294,7 @@ linepublicnumber as publiccode,
 transporttype as TransportMode,
 replace( CASE WHEN (terug.destnamemain is null) THEN concat_ws(' - ',u.name,dest_heen.destnamefull)
      ELSE concat_ws(' - ',dest_heen.destnamefull,terug.destnamemain) END,linepublicnumber||' ','') as name,
-1 as priority
+1 as priority,linename
  FROM 
  ((SELECT DISTINCT ON (version,dataownercode,lineplanningnumber) * FROM (
   SELECT version,dataownercode,lineplanningnumber,journeypatterncode,count((version, dataownercode, organizationalunitcode, schedulecode, 
@@ -388,7 +341,7 @@ linepublicnumber as publiccode,
 transporttype as TransportMode,
 replace( CASE WHEN (terug.destnamemain is null) THEN concat_ws(' - ',u.name,dest_heen.destnamefull)
      ELSE concat_ws(' - ',dest_heen.destnamefull,terug.destnamemain) END,linepublicnumber||' ','') as name,
-2 as priority
+2 as priority,linename
  FROM 
  ((SELECT DISTINCT ON (version,dataownercode,lineplanningnumber) * FROM (
   SELECT version,dataownercode,lineplanningnumber,journeypatterncode,count((version, dataownercode, organizationalunitcode, schedulecode, 
@@ -444,6 +397,11 @@ CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATE
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) = 'U')           THEN 'GVU'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) IN ('A','X'))    THEN 'BRENG'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) = 'L')           THEN 'HERMES'
+     WHEN (dataownercode = 'CXX' and line.lineplanningnumber in (SELECT DISTINCT lineplanningnumber
+                                                                 FROM jopatili JOIN confinrel USING (version,dataownercode,confinrelcode)
+                                                                 JOIN conarea USING (version,dataownercode,concessionareacode)
+                                                                 WHERE concessionareacode in ('FLE-YSS','OV-YS-2014','OSL-YSS')))
+                                                                                             THEN 'OVREGIOY'
      WHEN (dataownercode = 'QBUZZ' and substring(line.lineplanningnumber,1,1) = 'u')         THEN 'UOV'
      ELSE dataownercode END as operatorref, 
 dataownercode||':'||lineplanningnumber as operator_id,
