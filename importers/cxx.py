@@ -38,6 +38,13 @@ def getOperator():
                                'url'         : 'http://www.gvu.nl',
                                'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'},
+              'OVREGIOY' :    {'privatecode' : 'OVREGIOY',
+                               'operator_id' : 'OVREGIOY',
+                               'name'        : 'OV Regio IJsselmond',
+                               'phone'       : '0900-2666399',
+                               'url'         : 'http://www.ovregioijsselmond.nl',
+                               'timezone'    : 'Europe/Amsterdam',
+                               'language'    : 'nl'},
               'NIAG' :        {'privatecode' : 'NIAG',
                                'operator_id' : 'NIAG',
                                'name'        : 'NIAG',
@@ -88,22 +95,31 @@ create temporary table NewJourney(
 SELECT array_agg(distinct newjourney.availabilityconditionref) as availabilityconditions
 FROM 
 journey JOIN (SELECT availabilityconditionref,array_agg(validdate ORDER BY validdate) as days
-              FROM availabilityconditionday WHERE (isavailable = true or validdate >= %s::date) GROUP BY availabilityconditionref) as jac USING (availabilityconditionref)
+              FROM availabilityconditionday GROUP BY availabilityconditionref) as jac USING (availabilityconditionref)
         JOIN timedemandgroup as oj ON (oj.id = journey.timedemandgroupref)
+        JOIN journeypattern as ojp ON (ojp.id = journey.journeypatternref)
+        JOIN route AS orr ON (orr.id = ojp.routeref)
+        JOIN line AS ol ON (ol.id = orr.lineref)
         JOIN (SELECT journeypatternref,array_agg(pointref ORDER BY pointorder) as points
               FROM pointinjourneypattern GROUP BY journeypatternref) as jjp USING (journeypatternref)
 ,newjourney JOIN (SELECT availabilityconditionref,array_agg(validdate ORDER BY validdate) as days
                        FROM availabilityconditionday WHERE isavailable = true GROUP BY availabilityconditionref) as nac USING 
 (availabilityconditionref)
         JOIN timedemandgroup as nt ON (nt.id = newjourney.timedemandgroupref)
+        JOIN journeypattern as njpp ON (njpp.id = newjourney.journeypatternref)
+        JOIN route AS nr ON (nr.id = njpp.routeref)
+        JOIN line AS nl ON (nl.id = nr.lineref)
         JOIN (SELECT journeypatternref,array_agg(pointref ORDER BY pointorder) as points
               FROM pointinjourneypattern GROUP BY journeypatternref) as njp USING (journeypatternref)
 WHERE 
 journey.operator_id = newjourney.operator_id AND
-nac.days = jac.days AND
-(jjp.points != njp.points OR oj.operator_id != nt.operator_id);
+--nac.days = jac.days AND
+(jjp.points != njp.points OR oj.operator_id != nt.operator_id OR nl.operatorref != ol.operatorref);
 """,[data['_validfrom']])
     availabilityConditionrefs = cur.fetchone()['availabilityconditions']
+    print availabilityConditionrefs
+    if availabilityConditionrefs is None:
+        availabilityConditionrefs = []
     print str(len(availabilityConditionrefs)) + ' calendars dirty'
     cur.execute("""
 UPDATE availabilityconditionday SET isavailable = false WHERE availabilityConditionref = any(%s) AND validdate < %s;
@@ -117,14 +133,17 @@ journey JOIN availabilitycondition as oac ON (oac.id = journey.availabilitycondi
 WHERE 
 journey.operator_id = newjourney.operator_id AND
 oac.operator_id = nac.operator_id AND
-newjourney.availabilityconditionref != any(%s)
-""",[availabilityConditionrefs])
+(%s = 0 or newjourney.availabilityconditionref != any(%s))
+""",[len(availabilityConditionrefs),availabilityConditionrefs])
+    count = 0
     for row in cur.fetchall():
+        count += 1
         data['JOURNEY'][row['operator_id']]['id'] = row['id']
         cur.execute("delete from newjourney where id = %s",[row['tmp_id']])
+    print str(count) + ' journeys recycled'
 
 def import_zip(path,filename,version):
-    validthru = '2014-01-04'
+    validthru = '2015-01-04'
     meta,conn = load(path,filename)
     validfrom = version['validfrom']
     print validfrom
@@ -135,7 +154,7 @@ def import_zip(path,filename,version):
         data = {}
         data['_validfrom'] = version['validfrom']
         data['OPERATOR'] = getOperator()
-        data['MERGESTRATEGY'] = [{'type' : 'DATASOURCE', 'fromdate' : validfrom, 'datasourceref' : '1'}] 
+        data['MERGESTRATEGY'] = [{'type' : 'DATASOURCE', 'fromdate' : validfrom, 'datasourceref' : '1'}]
         data['DATASOURCE'] = getDataSource()
         data['VERSION'] = {}
         data['VERSION']['1'] = {'privatecode'   : 'CXX:'+filename,
@@ -163,8 +182,9 @@ def import_zip(path,filename,version):
         data['NOTICEASSIGNMENT'] = {}
         data['NOTICE'] = {}
         data['NOTICEGROUP'] = {}
-        conn.close()
         insert(data,recycle_journeyids=recycle_journeyids)
+        conn.commit()
+        conn.close()
     except:
         raise
 
