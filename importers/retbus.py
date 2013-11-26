@@ -4,17 +4,15 @@ from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
 import logging
-from settings.const import *
-
 
 logger = logging.getLogger("importer")
 getPool = getFakePool811
 
 def getDataSource():
     return { '1' : {
-                          'operator_id' : 'RET',
-                          'name'        : 'RET KV1',
-                          'description' : 'RET KV1 leveringen',
+                          'operator_id' : 'RETBUS',
+                          'name'        : 'RET KV1 voor bus',
+                          'description' : 'RET KV1 leveringen voor bus (via SSC)',
                           'email'       : None,
                           'url'         : None}}
 
@@ -27,18 +25,6 @@ def getOperator():
                                'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}
            }
-
-def setLineColors():
-    conn = psycopg2.connect(database_connect)
-    cur = conn.cursor()
-    cur.execute("""
-UPDATE line set color_shield = '003a8c', color_text= 'ffffff' WHERE operator_id = 'RET:M010';
-UPDATE line set color_shield = '34b4e4', color_text= '000000' WHERE operator_id = 'RET:M009';
-""")
-    cur.close()
-    conn.commit()
-    conn.close()
-
 
 def getMergeStrategies(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -102,7 +88,6 @@ def import_zip(path,filename,version):
         data['NOTICEGROUP'] = {}
         insert(data)
         conn.close()
-        setLineColors()
     except:
         raise
 
