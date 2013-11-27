@@ -34,8 +34,9 @@ def getOperator():
 def getMergeStrategies(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-DELETE FROM OPERDAY as o WHERE validdate < (SELECT validfrom FROM schedvers as s WHERE s.schedulecode = o.schedulecode AND s.scheduletypecode = 
-o.scheduletypecode AND s.version = o.version AND s.organizationalunitcode = o.organizationalunitcode)""")
+DELETE FROM operday WHERE concat_ws(':',version,schedulecode,scheduletypecode,validdate) IN (
+SELECT concat_ws(':',version,schedulecode,scheduletypecode,validdate) FROM operday JOIN schedvers USING (version,schedulecode,scheduletypecode) WHERE 
+validdate < schedvers.validfrom);""")
     cur.execute("""
 SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate FROM schedvers
 """)

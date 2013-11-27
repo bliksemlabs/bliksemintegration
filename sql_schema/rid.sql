@@ -243,7 +243,8 @@ create table Journey(
     hasLiftOrRamp boolean,
     haswifi boolean,
     bicycleAllowed boolean,
-    onDemand boolean
+    onDemand boolean,
+    isvirtual boolean default(false)
 );
 
 create table journeytransfers(

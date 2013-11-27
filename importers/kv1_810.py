@@ -115,7 +115,8 @@ NULL as haswifi,
 CASE WHEN (dataownercode = 'CXX' and lineplanningnumber in ('N419','Z050','Z060','Z020')) THEN true
      ELSE null END
      as bicycleallowed,
-productformulatype in (2,8,35,36) as onDemand
+productformulatype in (2,8,35,36) as onDemand,
+(not dataownerisoperator) as isvirtual
 FROM pujo LEFT JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumber,journeypatterncode)
                                              version,dataownercode,lineplanningnumber,journeypatterncode,productformulatype FROM jopatili
                                              ORDER BY version,dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder) as pattern
@@ -155,7 +156,8 @@ CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN true
      WHEN (dataownercode = 'GVB' and lineplanningnumber in ('50','51','52','53','54')) THEN true
      WHEN (dataownercode = 'ARR' and lineplanningnumber in ('17090','17194','17196')) THEN true
      ELSE NULL END as bicycleallowed,
-productformulatype in (2,8,35,36) as onDemand
+productformulatype in (2,8,35,36) as onDemand,
+(not dataownerisoperator) as isvirtual
 FROM pujopass LEFT JOIN (SELECT DISTINCT ON (version,dataownercode,lineplanningnumber,journeypatterncode)
                                              version,dataownercode,lineplanningnumber,journeypatterncode,productformulatype FROM jopatili
                                              ORDER BY version,dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder) as pattern
@@ -403,6 +405,7 @@ CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATE
                                                                  WHERE concessionareacode in ('FLE-YSS','OV-YS-2014','OSL-YSS')))
                                                                                              THEN 'OVREGIOY'
      WHEN (dataownercode = 'QBUZZ' and substring(line.lineplanningnumber,1,1) = 'u')         THEN 'UOV'
+     WHEN (dataownercode = 'SYNTUS' and description like 'TW%')           THEN 'TWENTS'
      ELSE dataownercode END as operatorref, 
 dataownercode||':'||lineplanningnumber as operator_id,
 lineplanningnumber as privatecode,
