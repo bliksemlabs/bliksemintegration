@@ -541,7 +541,7 @@ line_id as privatecode,
 'IFF:'||upper(c.code) as operatorref,
 description as publiccode,
 CASE WHEN (servicename is not null) THEN servicename||' '||start.name||' <-> '||dest.name
-     WHEN (route(servicenumber,variant) is null) THEN description||' '||least(start.name,dest.name)||' <-> '||greatest(least.name,dest.name)
+     WHEN (route(servicenumber,variant) is null) THEN description||' '||least(start.name,dest.name)||' <-> '||greatest(start.name,dest.name)
      ELSE start.name||' <-> '||dest.name||' '||transmode||route(servicenumber,variant) END AS name,
 CASE WHEN (transmode in ('NSS','NSB','B','BNS','X','U','Y')) THEN 'BUS'
      WHEN (transmode = 'NSM') THEN 'METRO'
