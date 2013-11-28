@@ -225,18 +225,21 @@ def merge(conn,data,mergestrategies):
             datasource = data['DATASOURCE'][item['datasourceref']]
             print datasource
             if 'fromdate' in item and 'todate' in item:
+                print 'remove datesource '+str(datasource)+' between '+str(item['fromdate'])+' and '+str(item['todate'])
                 cur.execute("""
 update availabilityconditionday set isavailable = false 
 WHERE availabilityconditionref in (select ac.id from availabilitycondition as ac LEFT JOIN version as v ON (v.id = ac.versionref) WHERE datasourceref = %s)
 AND validdate between %s and %s;
                 """,[datasource,item['fromdate'],item['todate']])
             elif 'fromdate' in item:
+                print 'remove datesource '+str(datasource)+' after and on '+str(item['fromdate'])
                 cur.execute("""
 update availabilityconditionday set isavailable = false 
-WHERE availabilityconditionref in (select ac.id from availabilitycondition as ac LEFT JOIN version as v ON (v.id = ac.versionref) WHERE datasourceref = %s)
+WHERE availabilityconditionref in (select ac.id from availabilitycondition as ac JOIN version as v ON (v.id = ac.versionref) WHERE datasourceref = %s)
 AND validdate >= %s;
                 """,[datasource,item['fromdate']])
             else:
+                print 'remove datesource '+str(datasource)   
                 cur.execute("""
 update availabilityconditionday set isavailable = false 
 WHERE availabilityconditionref in (select ac.id from availabilitycondition as ac LEFT JOIN version as v ON (v.id = ac.versionref) WHERE datasourceref = %s)
@@ -244,14 +247,17 @@ WHERE availabilityconditionref in (select ac.id from availabilitycondition as ac
         elif item['type'] == 'UNITCODE':
             unitcode = item['unitcode']
             if 'fromdate' in item and 'todate' in item:
+                print 'remove unitcode '+str(unitcode)+' between '+str(item['fromdate'])+' and '+str(item['todate'])
                 cur.execute("""
 update availabilityconditionday set isavailable = false where availabilityconditionref in (select id from availabilitycondition where unitcode = %s) and validdate between %s and %s;
                 """,[unitcode,item['fromdate'],item['todate']])
             elif 'fromdate' in item:
+                print 'remove unitcode '+str(unitcode)+' after and on '+str(item['fromdate'])   
                 cur.execute("""
 update availabilityconditionday set isavailable = false where availabilityconditionref in (select id from availabilitycondition where unitcode = %s) and validdate >= %s;
                 """,[unitcode,item['fromdate']])
             else:
+                print 'remove unitcode'
                 cur.execute("""
 update availabilityconditionday set isavailable = false where availabilityconditionref in (select id from availabilitycondition where unitcode = %s)
                 """,[unitcode])

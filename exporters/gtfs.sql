@@ -67,7 +67,7 @@ FROM (select *,count(id) over (PARTITION BY availabilityconditionref,blockref) a
 (blockref not in (SELECT distinct j1.blockref FROM 
 (SELECT journey.privatecode,blockref,departuretime,departuretime+max(totaldrivetime) as arrivaltime,count(journey.id) OVER (PARTITION BY blockref 
 ORDER BY departuretime) as blockseq
- FROM journey JOIN pointintimedemandgroup USING (timedemandgroupref) WHERE blockref IS NOT null GROUP By journey.id,blockref) as j1
+ FROM servicejourney JOIN pointintimedemandgroup USING (timedemandgroupref) WHERE blockref IS NOT null GROUP By journey.id,blockref) as j1
 JOIN
 ( SELECT journey.privatecode,blockref,departuretime,departuretime+max(totaldrivetime) as arrivaltime,count(journey.id) OVER (PARTITION BY blockref 
 ORDER BY departuretime) as blockseq

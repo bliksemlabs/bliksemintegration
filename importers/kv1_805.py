@@ -516,7 +516,7 @@ ORDER BY version, dataownercode, organizationalunitcode, schedulecode, schedulet
     return journeys
 
 importorder = ['DEST','LINE','CONAREA','CONFINREL','POINT','USRSTAR','USRSTOP','TILI','LINK','POOL','JOPA','JOPATILI','ORUN','ORUNORUN','SPECDAY','PEGR','EXCOPDAY','PEGRVAL','TIVE','TIMDEMGRP','TIMDEMRNT','PUJO','SCHEDVERS','PUJOPASS','OPERDAY']
-versionheaders = ['Version_Number','VersionNumber','VERSIONNUMBER']
+versionheaders = ['[Version number]','Version_Number','VersionNumber','VERSIONNUMBER']
 
 def table(filename):
     filename = filename.split('.TMI')[0]
