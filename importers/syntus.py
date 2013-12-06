@@ -38,15 +38,23 @@ DELETE FROM operday WHERE concat_ws(':',version,schedulecode,scheduletypecode,va
 SELECT concat_ws(':',version,schedulecode,scheduletypecode,validdate) FROM operday JOIN schedvers USING (version,schedulecode,scheduletypecode) WHERE 
 validdate < schedvers.validfrom);""")
     cur.execute("""
-SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate FROM schedvers
+SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate,max(validthru) as todate FROM schedvers
 """)
     rows = cur.fetchall()
     cur.close()
     return rows
 
+def removeZeroPoints(conn):
+#    cur = conn.cursor()
+#    cur.execute("""
+#--DELETE FROM pool WHERE pointcode in (SELECT pointcode FROM point WHERE locationx_ew = 0);
+#""")
+     pass
+
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
     try:
+        removeZeroPoints(conn)
         data = {}
         data['OPERATOR'] = getOperator()
         data['MERGESTRATEGY'] = getMergeStrategies(conn)
