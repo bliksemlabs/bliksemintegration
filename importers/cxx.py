@@ -80,7 +80,8 @@ create temporary table NewJourney(
     hasLiftOrRamp boolean,
     haswifi boolean,
     bicycleAllowed boolean,
-    onDemand boolean
+    onDemand boolean,
+    isvirtual boolean default(false)
 );
 """)
     for key,journey in data['JOURNEY'].items():
