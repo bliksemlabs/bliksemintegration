@@ -87,6 +87,8 @@ GROUP BY JOURNEY_id
         for point in points:
             point_dict = {'pointorder' : point[0],'totaldrivetime' : point[1], 'stopwaittime' : point[2]}
             timdemgrp['POINTS'].append(point_dict)
+        if len(timdemgrp['POINTS']) == 0:
+            raise exception('TIMEDEMAND GROUP EMPTY?')
         journeyinfo[row['journey_id']] = {'departuretime' : dep_time, 'timedemandgroupref' : m.hexdigest()}
         timdemgrp['operator_id'] = m.hexdigest()
         timdemgroups[m.hexdigest()] = timdemgrp
@@ -412,7 +414,7 @@ def getOperator(conn):
                  'BRENG'   : {'url' : 'http://www.breng.nl',       'language' : 'nl', 'phone' : '026-2142140'},
                  'VEO'     : {'url' : 'http://www.veolia.nl',      'language' : 'nl', 'phone' : '088-0761111'},
                  'QBUZZ'   : {'url' : 'http://www.qbuzz.nl',       'language' : 'nl', 'phone' : '0900-7289965'},
-                 'EETC'    : {'url' : 'http://www.eetc.nl',      '  language' : 'nl', 'phone' : '015-2133636'},
+                 'EETC'    : {'url' : 'http://www.eetc.nl',        'language' : 'nl', 'phone' : '015-2133636'},
                  'VALLEI'  : {'url' : 'http://www.valleilijn.nl',  'language' : 'nl', 'phone' : '0900-2666399'},
                  'HISPEED' : {'url' : 'http://www.nshispeed.nl',   'language' : 'nl', 'phone' : '0900-9296'},
                  'SNCF'    : {'url' : 'http://www.sncf.fr',        'language' : 'fr', 'phone' : '+33890640650'},
