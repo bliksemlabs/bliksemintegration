@@ -413,6 +413,7 @@ def getOperator(conn):
                  'EUROSTAR': {'url' : 'http://www.eurostar.co.uk', 'language' : 'nl', 'phone' : '0900-9296'},
                  'BRENG'   : {'url' : 'http://www.breng.nl',       'language' : 'nl', 'phone' : '026-2142140'},
                  'VEO'     : {'url' : 'http://www.veolia.nl',      'language' : 'nl', 'phone' : '088-0761111'},
+                 'VEOLIA'  : {'url' : 'http://www.veolia.nl',      'language' : 'nl', 'phone' : '088-0761111'},
                  'QBUZZ'   : {'url' : 'http://www.qbuzz.nl',       'language' : 'nl', 'phone' : '0900-7289965'},
                  'EETC'    : {'url' : 'http://www.eetc.nl',        'language' : 'nl', 'phone' : '015-2133636'},
                  'VALLEI'  : {'url' : 'http://www.valleilijn.nl',  'language' : 'nl', 'phone' : '0900-2666399'},
