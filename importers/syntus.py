@@ -27,7 +27,7 @@ def getOperator():
                                'operator_id' : 'TWENTS',
                                'name'        : 'Twents (Syntus)',
                                'phone'       : '088-0331360',
-                               'url'         : 'http://www.syntustwente.nl',
+                               'url'         : 'http://www.twents.nl',
                                'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}}
 
@@ -38,7 +38,7 @@ DELETE FROM operday WHERE concat_ws(':',version,schedulecode,scheduletypecode,va
 SELECT concat_ws(':',version,schedulecode,scheduletypecode,validdate) FROM operday JOIN schedvers USING (version,schedulecode,scheduletypecode) WHERE 
 validdate < schedvers.validfrom);""")
     cur.execute("""
-SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate,max(validthru) as todate FROM schedvers
+SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validdate) as fromdate,max(validdate) as todate FROM operday
 """)
     rows = cur.fetchall()
     cur.close()
