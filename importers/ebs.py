@@ -109,7 +109,7 @@ def download(url,filename):
     import_zip('/tmp',filename,None)
 
 
-url = 'http://kv1.openov.nl/ebs/'
+url = 'http://data.ndovloket.nl/ebs/'
 
 def sync():
     f = urllib2.urlopen(url+'?order=d')
