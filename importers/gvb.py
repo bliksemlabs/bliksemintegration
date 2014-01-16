@@ -53,7 +53,7 @@ def calculateTimeDemandGroupsGVB(conn):
     timdemgroups = {}
     journeyinfo = {}
     cur.execute("""
-SELECT concat_ws(':',version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber) as 
+SELECT concat_ws(':',dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber) as 
 JOURNEY_id, 
 array_agg(cast(patternpass.stoporder as integer) order by patternpass.stoporder) as 
 stoporders,array_agg(toseconds(coalesce(targetarrivaltime,targetdeparturetime),0) order by patternpass.stoporder) as 
@@ -106,12 +106,12 @@ def import_zip(path,filename,meta=None):
         timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroupsGVB(conn)
         routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getPool811)
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'])
+        print 'journeys'
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn)
         data['NOTICEASSIGNMENT'] = {}
         data['NOTICE'] = {}
         data['NOTICEGROUP'] = {}
         conn.close()
-        insert(data)
         setLineColors()
     except:
         raise
