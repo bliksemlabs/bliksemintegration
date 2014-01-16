@@ -51,7 +51,7 @@ class TripBundle:
 
     def getattributes(self):
         attributes = []
-        query = "SELECT (lowfloor or hasliftorramp),haswifi,bicycleallowed FROM journey WHERE id = %s LIMIT 1"
+        query = "SELECT (lowfloor or hasliftorramp),haswifi,bicycleallowed FROM servicejourney WHERE id = %s LIMIT 1"
         cur = self.riddb.conn.cursor()
         for trip_id in self.sorted_trip_ids():
             cur.execute(query,[trip_id])
@@ -67,7 +67,7 @@ class TripBundle:
         """ function from a route (TripBundle) to a list of all trip_ids for that route,
         sorted by first departure time of each trip """
         query = """
-    select id::text, departuretime from journey
+    select id::text, departuretime from servicejourney
     where id in (%s)
     order by departuretime""" % (",".join( ["'%s'"%x for x in self.trip_ids] ))
         cur = self.riddb.conn.cursor()
@@ -181,8 +181,8 @@ ORDER BY distance ASC
         cur = self.conn.cursor()
         cur.execute("""
 SELECT
-validdate,count(distinct journey.id)
-FROM journey LEFT JOIN availabilityconditionday USING (availabilityconditionref)
+validdate,count(distinct servicejourney.id)
+FROM servicejourney JOIN availabilityconditionday USING (availabilityconditionref)
 WHERE isavailable = true
 GROUP BY validdate
 ORDER BY count DESC
@@ -195,8 +195,8 @@ LIMIT 1""")
         cur = self.conn.cursor()
         cur.execute("""
 SELECT
-journey.id::text as tid,service_id as sid
-FROM journey LEFT JOIN servicecalendar USING (availabilityconditionref)
+servicejourney.id::text as tid,service_id as sid
+FROM servicejourney LEFT JOIN servicecalendar USING (availabilityconditionref)
 """);
         return cur.fetchall()
 
@@ -255,7 +255,7 @@ FROM scheduledstoppoint LEFT JOIN
         cur.execute( """
 SELECT 
 l.id::text,d.name,o.operator_id,l.publiccode,l.name,gtfs_route_type as mode,pc.name as trip_long_name
-FROM journey as j JOIN journeypattern as jp on (jp.id = journeypatternref)
+FROM servicejourney as j JOIN journeypattern as jp on (jp.id = journeypatternref)
                   JOIN route as r on (r.id = routeref)
                   JOIN line as l on (l.id = lineref)
                   JOIN transportmode as m USING (transportmode)
@@ -282,8 +282,8 @@ WHERE j.id = %s
             query = """
             select departuretime+totaldrivetime as arrival_time, departuretime+totaldrivetime+stopwaittime as departure_time,
                    pointorder as stop_sequence
-            from journey JOIN pointintimedemandgroup USING (timedemandgroupref)
-            where journey.id = %s
+            from servicejourney JOIN pointintimedemandgroup USING (timedemandgroupref)
+            where servicejourney.id = %s
             order by pointorder""" 
             c = self.conn.cursor()
             c.execute(query,[trip_id])
@@ -348,7 +348,7 @@ ORDER BY journeypatternref,timedemandgroupref""")
     def compile_trip_bundles(self, maxtrips=None, reporter=None):
         
         c = self.get_cursor()
-        c.execute("""SELECT count(*) FROM journey JOIN servicecalendar USING (availabilityconditionref)""")
+        c.execute("""SELECT count(*) FROM servicejourney JOIN servicecalendar USING (availabilityconditionref)""")
         n_trips = c.fetchone()[0]
         print str(n_trips) + ' trips'
 
@@ -372,7 +372,7 @@ iswaitpoint::int4 as timepoint,
 d.name as headsign,
 p.name as productcategory,
 ondemand as ondemands
-FROM journey as j JOIN servicecalendar as c USING (availabilityconditionref)
+FROM servicejourney as j JOIN servicecalendar as c USING (availabilityconditionref)
                   JOIN pointinjourneypattern as jpt USING (journeypatternref)
                   JOIN scheduledstoppoint as sp ON (sp.id = pointref)
                   JOIN pointintimedemandgroup as tpt USING (timedemandgroupref,pointorder)
