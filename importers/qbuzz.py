@@ -33,6 +33,7 @@ def getOperator():
                                'language'    : 'nl'}}
 
 def getMergeStrategies(conn):
+    return [] #TEMPORARY
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
 SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validdate) as fromdate FROM operday GROUP BY dataownercode
@@ -73,7 +74,39 @@ update line set color_shield = 'dc82e6' where operator_id = 'QBUZZ:g015';
 update line set color_text = '000000' where operator_id = 'QBUZZ:g015';
 
 update line set color_shield = 'dc82e6' where operator_id = 'QBUZZ:g015';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g015';""")
+update line set color_text = '000000' where operator_id = 'QBUZZ:g015';
+
+--QLINK
+
+update line set color_shield = '00be5c' where operator_id = 'QBUZZ:g502';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g502';
+update line set color_shield = '185099' where operator_id = 'QBUZZ:g503';
+update line set color_text = 'ffffff' where operator_id = 'QBUZZ:g503';
+update line set color_shield = '6ed1f6' where operator_id = 'QBUZZ:g554';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g554';
+update line set color_shield = '7e1c90' where operator_id = 'QBUZZ:g505';
+update line set color_text = 'ffffff' where operator_id = 'QBUZZ:g505';
+update line set color_shield = 'd81118' where operator_id = 'QBUZZ:g506';
+update line set color_text = 'ffffff' where operator_id = 'QBUZZ:g506';
+update line set color_shield = 'fdd205' where operator_id = 'QBUZZ:g507';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g507';
+update line set color_shield = 'dd9345' where operator_id = 'QBUZZ:g508';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g508';
+update line set color_shield = 'f468bb' where operator_id = 'QBUZZ:g509';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g509';
+update line set color_shield = 'ec008c' where operator_id = 'QBUZZ:g501';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g501';
+update line set color_shield = 'ed028d' where operator_id = 'QBUZZ:g512';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g512';
+update line set color_shield = 'f35e18' where operator_id = 'QBUZZ:g565';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g565';
+update line set color_shield = 'f35e18' where operator_id = 'QBUZZ:g515';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g515';
+update line set color_shield = 'd81118' where operator_id = 'QBUZZ:g516';
+update line set color_text = 'ffffff' where operator_id = 'QBUZZ:g516';
+update line set color_shield = 'f68512' where operator_id = 'QBUZZ:g517';
+update line set color_text = '000000' where operator_id = 'QBUZZ:g517';
+""")
     cur.close()
     conn.commit()
     conn.close()
