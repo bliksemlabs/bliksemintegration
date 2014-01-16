@@ -106,11 +106,11 @@ def import_zip(path,filename,meta=None):
         timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroupsGVB(conn)
         routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getPool811)
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'])
-        print 'journeys'
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn)
         data['NOTICEASSIGNMENT'] = {}
         data['NOTICE'] = {}
         data['NOTICEGROUP'] = {}
+        insert(data)
         conn.close()
         setLineColors()
     except:
