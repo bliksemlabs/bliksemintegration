@@ -22,7 +22,6 @@ cast(CAST(ST_X(the_geom) AS NUMERIC(7,5)) as text) AS longitude,
 cast(0 as integer) as distancefromstart
 FROM link,(select *,st_transform(st_setsrid(st_makepoint(locationx_ew,locationy_ns),28992),4326) as the_geom from point) as point
 WHERE
-link.version = point.version AND
 link.userstopcodebegin = point.pointcode AND
 link.dataownercode||':'||userstopcodebegin = %s AND
 link.dataownercode||':'||userstopcodeend = %s
@@ -35,7 +34,6 @@ cast(CAST(ST_X(the_geom) AS NUMERIC(7,5)) as text) AS longitude,
 cast(distance as integer) as distancefromstart
 FROM link,(select *,st_transform(st_setsrid(st_makepoint(locationx_ew,locationy_ns),28992),4326) as the_geom from point) as point
 WHERE
-link.version = point.version AND
 link.userstopcodeend = point.pointcode AND
 link.dataownercode||':'||userstopcodebegin = %s AND
 link.dataownercode||':'||userstopcodeend = %s
@@ -60,23 +58,19 @@ a.town as town,
 CAST(CAST(ST_Y(the_geom) AS NUMERIC(9,6)) AS text) AS latitude,
 CAST(CAST(ST_X(the_geom) AS NUMERIC(8,6)) AS text) AS longitude
 FROM (SELECT stopareacode,
-               ST_Transform(ST_setsrid(ST_makepoint(AVG(locationx_ew), AVG(locationy_ns)), 28992), 4326) AS the_geom,
-               version
+               ST_Transform(ST_setsrid(ST_makepoint(AVG(locationx_ew), AVG(locationy_ns)), 28992), 4326) AS the_geom
         FROM (SELECT u.dataownercode || ':' ||u.userstopareacode AS stopareacode,
                        locationx_ew,
-                       locationy_ns,
-                       u.version
+                       locationy_ns
                 FROM usrstop AS u,
                        point AS p
                 WHERE u.dataownercode = p.dataownercode AND
-                       u.version = p.version AND
                        u.userstopcode = p.pointcode AND
                        u.userstopareacode IS NOT NULL) AS x
-        GROUP BY version,stopareacode) AS y,
-        (SELECT DISTINCT ON (dataownercode,userstopareacode) * FROM usrstar ORDER BY dataownercode,userstopareacode,version DESC) AS a
+        GROUP BY stopareacode) AS y,
+        (SELECT DISTINCT ON (dataownercode,userstopareacode) * FROM usrstar ORDER BY dataownercode,userstopareacode DESC) AS a
 WHERE
-stopareacode = a.dataownercode || ':' || a.userstopareacode AND
-a.version = y.version
+stopareacode = a.dataownercode || ':' || a.userstopareacode
 """)
     for row in cur.fetchall():
         stopareas[row['operator_id']] = row
@@ -100,9 +94,9 @@ CAST(CAST(ST_Y(the_geom) AS NUMERIC(9,6)) AS text) AS latitude,
 CAST(CAST(ST_X(the_geom) AS NUMERIC(8,6)) AS text) AS longitude,
 locationx_ew as rd_x,
 locationy_ns as rd_y
-FROM usrstop as u, (select version,dataownercode,pointcode,locationx_ew, locationy_ns,ST_Transform(ST_setsrid(ST_makepoint(locationx_ew, 
+FROM usrstop as u, (select dataownercode,pointcode,locationx_ew, locationy_ns,ST_Transform(ST_setsrid(ST_makepoint(locationx_ew, 
 locationy_ns), 28992), 4326) as the_geom from POINT) as p
-WHERE u.version = p.version AND u.dataownercode = p.dataownercode AND u.userstopcode = p.pointcode
+WHERE u.dataownercode = p.dataownercode AND u.userstopcode = p.pointcode
 """)
     for row in cur.fetchall():
         userstops[row['operator_id']] = row
@@ -168,7 +162,7 @@ dataownercode||':'||organizationalunitcode||':'||schedulecode||':'||scheduletype
 array_agg(cast(validdate as text)) as validdates,
 true as isavailable
 FROM operday
-GROUP BY version,dataownercode,organizationalunitcode,schedulecode,scheduletypecode
+GROUP BY dataownercode,organizationalunitcode,schedulecode,scheduletypecode
 ;
 """)
     for row in cur.fetchall():
@@ -188,8 +182,8 @@ s.dataownercode||':'||s.organizationalunitcode as unitcode,
 coalesce(s.description,s.dataownercode||':'||s.organizationalunitcode||':'||s.schedulecode||':'||s.scheduletypecode) as name,
 cast(min(validdate) as text) as fromdate,
 cast(max(validdate) as text) as todate
-FROM schedvers as s left join operday using (version,dataownercode,schedulecode,scheduletypecode)
-GROUP BY s.version,s.dataownercode,s.organizationalunitcode,s.schedulecode,s.scheduletypecode
+FROM schedvers as s left join operday using (dataownercode,schedulecode,scheduletypecode)
+GROUP BY s.dataownercode,s.organizationalunitcode,s.schedulecode,s.scheduletypecode
 ;
 """)
     for row in cur.fetchall():
@@ -200,7 +194,7 @@ dataownercode||':'||organizationalunitcode||':'||schedulecode||':'||scheduletype
 array_agg(validdate) as validdates,
 true as isavailable
 FROM operday
-GROUP BY version,dataownercode,organizationalunitcode,schedulecode,scheduletypecode
+GROUP BY dataownercode,organizationalunitcode,schedulecode,scheduletypecode
 ;
 """)
     for row in cur.fetchall():
@@ -214,7 +208,7 @@ def calculateTimeDemandGroups(conn):
     timdemgroups = {}
     journeyinfo = {}
     cur.execute("""
-SELECT concat_ws(':',version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber) as 
+SELECT concat_ws(':',dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber) as 
 JOURNEY_id, 
 array_agg(cast(stoporder as integer) order by stoporder) as stoporders,array_agg(toseconds(coalesce(targetarrivaltime,targetdeparturetime),0) order by stoporder) as 
 arrivaltimes,array_agg(toseconds(coalesce(targetdeparturetime,targetarrivaltime),0) order by stoporder) as departuretimes
@@ -258,7 +252,6 @@ cast(CAST(ST_X(the_geom) AS NUMERIC(7,5)) as text) AS longitude,
 cast(distancesincestartoflink as integer) as distancefromstart
 FROM pool,(select *,st_transform(st_setsrid(st_makepoint(locationx_ew,locationy_ns),28992),4326) as the_geom from point) as point
 WHERE
-pool.version = point.version AND
 pool.pointcode = point.pointcode AND
 pool.dataownercode||':'||userstopcodebegin = %s AND
 pool.dataownercode||':'||userstopcodeend = %s AND
@@ -407,11 +400,11 @@ jopa.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as operator
 NULL as routeref,
 direction as directiontype,
 destinationdisplayref
-FROM jopa left join ( SELECT DISTINCT ON (version, dataownercode, lineplanningnumber, journeypatterncode)
-			version, dataownercode, lineplanningnumber, journeypatterncode,dataownercode||':'||destcode as destinationdisplayref
+FROM jopa left join ( SELECT DISTINCT ON (dataownercode, lineplanningnumber, journeypatterncode)
+			dataownercode, lineplanningnumber, journeypatterncode,dataownercode||':'||destcode as destinationdisplayref
 			FROM jopatili
-			ORDER BY version, dataownercode, lineplanningnumber, journeypatterncode,timinglinkorder ) as jopatili 
-                    USING (version, dataownercode, lineplanningnumber, journeypatterncode)""")
+			ORDER BY dataownercode, lineplanningnumber, journeypatterncode,timinglinkorder ) as jopatili 
+                    USING (dataownercode, lineplanningnumber, journeypatterncode)""")
     for row in cur.fetchall():
         journeypatterns[row['operator_id']] = row
         journeypatterns[row['operator_id']]['POINTS'] = []
@@ -434,14 +427,13 @@ getout as foralighting,
 CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false 
      ELSE getin END as forboarding,
 0 as distancefromstartroute,
-coalesce(sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode
-                                        ORDER BY j.version,j.dataownercode, lineplanningnumber, journeypatterncode, timinglinkorder
+coalesce(sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,journeypatterncode
+                                        ORDER BY j.dataownercode, lineplanningnumber, journeypatterncode, timinglinkorder
                                         ROWS between UNBOUNDED PRECEDING and 1 PRECEDING),0) as fareunitspassed
-FROM jopatili as j LEFT JOIN link as l using (version,dataownercode,userstopcodebegin,userstopcodeend)
-                   LEFT JOIN dest USING (version,destcode) LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = 
-j.userstopcodebegin)
+FROM jopatili as j LEFT JOIN link as l using (dataownercode,userstopcodebegin,userstopcodeend)
+                   LEFT JOIN dest USING (destcode) LEFT JOIN usrstop as u ON (u.userstopcode = j.userstopcodebegin)
 UNION (
-SELECT DISTINCT ON (j.version,j.dataownercode,lineplanningnumber,journeypatterncode)
+SELECT DISTINCT ON (j.dataownercode,lineplanningnumber,journeypatterncode)
 j.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as journeypatternref,
 cast(timinglinkorder+1 as integer) as pointorder,
 null as privatecode,
@@ -457,10 +449,10 @@ NULL as requeststop,
 getout as foralighting,
 false as forboarding,
 0 as distancefromstartroute,
-sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode) as fareunitspassed
-FROM jopatili as j LEFT JOIN link as l using (version,dataownercode,userstopcodebegin,userstopcodeend)
-                   LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = j.userstopcodeend)
-ORDER BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
+sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,journeypatterncode) as fareunitspassed
+FROM jopatili as j LEFT JOIN link as l using (dataownercode,userstopcodebegin,userstopcodeend)
+                   LEFT JOIN usrstop as u ON (u.userstopcode = j.userstopcodeend)
+ORDER BY j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
 ORDER BY journeypatternref,pointorder
 """)
     distance = 0
@@ -484,9 +476,9 @@ ORDER BY journeypatternref,pointorder
 def getJourneys(timedemandGroupRefForJourney,conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-SELECT DISTINCT ON (version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
+SELECT DISTINCT ON (dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
 concat_ws(':',dataownercode,lineplanningnumber,journeynumber) as privatecode,
-concat_ws(':',version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber) as operator_id,
+concat_ws(':',dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber) as operator_id,
 concat_ws(':', dataownercode, organizationalunitcode, schedulecode, scheduletypecode) as availabilityconditionRef,
 concat_ws(':',dataownercode,lineplanningnumber,journeypatterncode) as journeypatternref,
 NULL as timedemandgroupref,
@@ -506,7 +498,7 @@ FROM pujopass LEFT JOIN (SELECT DISTINCT ON (dataownercode,lineplanningnumber,jo
                                              dataownercode,lineplanningnumber,journeypatterncode,prodformtype FROM jopatili
                                              ORDER BY dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder) as pattern 
 USING(dataownercode,lineplanningnumber,journeypatterncode)
-ORDER BY version, dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber,stoporder ASC
+ORDER BY dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber,stoporder ASC
 """)
     journeys = {}
     for row in cur.fetchall():
@@ -530,7 +522,7 @@ def filelist(zipfile):
     return files
 
 def encodingof(dataownercode):
-    if dataownercode in ['QBUZZ','CXX','EBS']:
+    if dataownercode in ['CXX','EBS']:
         return 'ISO-8859-15'
     else:
         return 'UTF-8'
@@ -579,7 +571,7 @@ def importzip(conn,zipfile):
 def checkUsrstopPoint(conn):
     cur = conn.cursor()
     cur.execute("""
-select town,name,userstopcode from usrstop as u left join point as p on (u.version = p.version and u.userstopcode = p.pointcode) where pointcode is 
+select town,name,userstopcode from usrstop as u left join point as p on (u.userstopcode = p.pointcode) where pointcode is 
 null;""")
     rows = cur.fetchall()
     if len(rows) == 0:

@@ -31,7 +31,6 @@ cast(CAST(ST_X(the_geom) AS NUMERIC(7,5)) as text) AS longitude,
 cast(0 as integer) as distancefromstart
 FROM link,(select *,st_transform(st_setsrid(st_makepoint(locationx_ew,locationy_ns),28992),4326) as the_geom from point) as point
 WHERE
-link.version = point.version AND
 link.userstopcodebegin = point.pointcode AND
 link.transporttype = %s AND
 link.dataownercode||':'||userstopcodebegin = %s AND
@@ -45,7 +44,6 @@ cast(CAST(ST_X(the_geom) AS NUMERIC(7,5)) as text) AS longitude,
 cast(distance as integer) as distancefromstart
 FROM link,(select *,st_transform(st_setsrid(st_makepoint(locationx_ew,locationy_ns),28992),4326) as the_geom from point) as point
 WHERE
-link.version = point.version AND
 link.userstopcodeend = point.pointcode AND
 link.transporttype = %s AND
 link.dataownercode||':'||userstopcodebegin = %s AND
@@ -75,7 +73,6 @@ cast(CAST(ST_X(the_geom) AS NUMERIC(7,5)) as text) AS longitude,
 cast(distancesincestartoflink as integer) as distancefromstart
 FROM pool,(select *,st_transform(st_setsrid(st_makepoint(locationx_ew,locationy_ns),28992),4326) as the_geom from point) as point
 WHERE
-pool.version = point.version AND
 pool.pointcode = point.pointcode AND
 pool.dataownercode||':'||userstopcodebegin = %s AND
 pool.dataownercode||':'||userstopcodeend = %s AND
@@ -97,11 +94,11 @@ jopa.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as operator
 NULL as routeref,
 direction as directiontype,
 destinationdisplayref
-FROM jopa left join ( SELECT DISTINCT ON (version, dataownercode, lineplanningnumber, journeypatterncode)
-			version, dataownercode, lineplanningnumber, journeypatterncode,dataownercode||':'||destcode as destinationdisplayref
+FROM jopa join ( SELECT DISTINCT ON (dataownercode, lineplanningnumber, journeypatterncode)
+			dataownercode, lineplanningnumber, journeypatterncode,dataownercode||':'||destcode as destinationdisplayref
 			FROM jopatili
-			ORDER BY version, dataownercode, lineplanningnumber, journeypatterncode,timinglinkorder ) as jopatili 
-                    USING (version, dataownercode, lineplanningnumber, journeypatterncode)""")
+			ORDER BY dataownercode, lineplanningnumber, journeypatterncode,timinglinkorder ) as jopatili 
+                    USING (dataownercode, lineplanningnumber, journeypatterncode)""")
     for row in cur.fetchall():
         journeypatterns[row['operator_id']] = row
         journeypatterns[row['operator_id']]['POINTS'] = []
@@ -124,15 +121,15 @@ getout as foralighting,
 CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false 
      ELSE getin END as forboarding,
 0 as distancefromstartroute,
-coalesce(sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode
-                                        ORDER BY j.version,j.dataownercode, lineplanningnumber, journeypatterncode, timinglinkorder
+coalesce(sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,journeypatterncode
+                                        ORDER BY j.dataownercode, lineplanningnumber, journeypatterncode, timinglinkorder
                                         ROWS between UNBOUNDED PRECEDING and 1 PRECEDING),0) as fareunitspassed
-FROM jopatili as j JOIN line USING (version,dataownercode,lineplanningnumber)
-                   JOIN link as l USING (version,dataownercode,userstopcodebegin,userstopcodeend,transporttype)
-                   JOIN dest USING (version,destcode) LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = j.userstopcodebegin)
+FROM jopatili as j JOIN line USING (dataownercode,lineplanningnumber)
+                   JOIN link as l USING (dataownercode,userstopcodebegin,userstopcodeend,transporttype)
+                   JOIN dest USING (dataownercode,destcode) JOIN usrstop as u ON (u.userstopcode = j.userstopcodebegin)
 )
 UNION (
-SELECT DISTINCT ON (j.version,j.dataownercode,lineplanningnumber,journeypatterncode)
+SELECT DISTINCT ON (j.dataownercode,lineplanningnumber,journeypatterncode)
 j.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as journeypatternref,
 cast(timinglinkorder+1 as integer) as pointorder,
 null as privatecode,
@@ -148,11 +145,11 @@ NULL as requeststop,
 getout as foralighting,
 false as forboarding,
 0 as distancefromstartroute,
-sum(distance) OVER (PARTITION BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode) as fareunitspassed
-FROM jopatili as j LEFT JOIN line using (version,dataownercode,lineplanningnumber)
-                   LEFT JOIN link as l using (version,dataownercode,userstopcodebegin,userstopcodeend,transporttype)
-                   LEFT JOIN usrstop as u ON (u.version = j.version AND u.userstopcode = j.userstopcodeend)
-ORDER BY j.version,j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
+sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,journeypatterncode) as fareunitspassed
+FROM jopatili as j JOIN line using (dataownercode,lineplanningnumber)
+                   JOIN link as l using (dataownercode,userstopcodebegin,userstopcodeend,transporttype)
+                   JOIN usrstop as u ON (u.userstopcode = j.userstopcodeend)
+ORDER BY j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
 ORDER BY journeypatternref,pointorder
 """)
     distance = 0
