@@ -306,11 +306,15 @@ GROUP BY ac.id) as x
 );
 
 CREATE VIEW ServiceJourney AS (
-SELECT * FROM journey
+SELECT * FROM journey WHERE isvirtual != true
 );
 
 CREATE VIEW ActiveServiceJourney AS (
-SELECT * FROM journey WHERE AvailabilityConditionRef in (select id from ActiveAvailabilityCondition)
+SELECT * FROM servicejourney WHERE AvailabilityConditionRef in (select id from ActiveAvailabilityCondition)
+);
+
+CREATE VIEW ServiceDay AS (
+SELECT * FROM availabilityconditionday WHERE isavailable = true
 );
 
 CREATE FUNCTION bitcalendar(date[]) RETURNS varbit AS $$
