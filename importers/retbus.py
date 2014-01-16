@@ -1,5 +1,6 @@
 from kv1_811 import *
 from inserter import insert,version_imported,reject
+from importers.ret import generatePool
 from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
@@ -61,6 +62,7 @@ def import_zip(path,filename,version):
         return
     try:
         fixBob(conn)
+        generatePool(conn)
         data = {}
         data['OPERATOR'] = getOperator()
         data['MERGESTRATEGY'] = getMergeStrategies(conn)
