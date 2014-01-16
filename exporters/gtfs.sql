@@ -54,7 +54,7 @@ j.name as trip_short_name,
 pc.name as trip_long_name,
 (directiontype % 2 = 0)::int4 as direction_id,
 CASE WHEN (blockcoherent = true AND blockref is not null AND blockcount > 1 
-     AND (blockref like 'IFF:%' or j.privatecode like 'ARR:160__:%')) THEN blocknumber ELSE NULL END as block_id,
+     AND (blockref like 'IFF:%' or j.privatecode like 'ARR:160__:%' or j.privatecode like 'QBUZZ:u___:%')) THEN blocknumber ELSE NULL END as block_id,
 --CASE WHEN (blockcoherent = true AND blockref is not null AND blockcount > 1) THEN blocknumber ELSE NULL END as block_id,
 shape_id::text,
 CASE WHEN (hasliftorramp is null and lowfloor is null) THEN 0::int4
@@ -65,13 +65,13 @@ CASE WHEN (bicycleallowed) THEN 1
      ELSE NULL END as bikes_allowed
 FROM (select *,count(id) over (PARTITION BY availabilityconditionref,blockref) as  blockcount,
 (blockref not in (SELECT distinct j1.blockref FROM 
-(SELECT journey.privatecode,blockref,departuretime,departuretime+max(totaldrivetime) as arrivaltime,count(journey.id) OVER (PARTITION BY blockref 
-ORDER BY departuretime) as blockseq
- FROM servicejourney JOIN pointintimedemandgroup USING (timedemandgroupref) WHERE blockref IS NOT null GROUP By journey.id,blockref) as j1
+(SELECT blockref,min(departuretime) as departuretime,min(departuretime)+max(totaldrivetime) as arrivaltime,count(j.id) OVER (PARTITION BY blockref 
+ORDER BY min(departuretime)) as blockseq
+ FROM servicejourney as j JOIN pointintimedemandgroup USING (timedemandgroupref) WHERE blockref IS NOT null GROUP By j.id,blockref) as j1
 JOIN
-( SELECT journey.privatecode,blockref,departuretime,departuretime+max(totaldrivetime) as arrivaltime,count(journey.id) OVER (PARTITION BY blockref 
-ORDER BY departuretime) as blockseq
-  FROM journey JOIN pointintimedemandgroup USING (timedemandgroupref) WHERE blockref IS NOT null GROUP By journey.id,blockref) as j2
+( SELECT blockref,min(departuretime) as departuretime,min(departuretime)+max(totaldrivetime) as arrivaltime,count(j.id) OVER (PARTITION BY blockref 
+ORDER BY min(departuretime)) as blockseq
+  FROM servicejourney as j JOIN pointintimedemandgroup USING (timedemandgroupref) WHERE blockref IS NOT null GROUP By j.id,blockref) as j2
  ON (j1.blockref = j2.blockref and j1.blockseq = j2.blockseq -1)
 WHERE j1.arrivaltime > j2.departuretime)) as blockcoherent,
                count(blockref) over (ORDER BY blockref) as blocknumber FROM servicejourney) as j
@@ -104,12 +104,13 @@ WHERE l.id in (SELECT DISTINCT route_id FROM gtfs_trips)
 );
 
 create temporary table gtfs_agency as (
-SELECT
+SELECT DISTINCT ON (operator_id)
 operator_id as agency_id,
 name as agency_name,
 url as agency_url,
 timezone as agency_timezone,
-phone as agency_phone
+phone as agency_phone,
+language as agency_lang
 FROM operator
 WHERE operator_id in (select distinct agency_id from gtfs_routes)
 );
