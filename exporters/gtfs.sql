@@ -4,9 +4,10 @@ SELECT
 'http://www.ovapi.nl'::text as feed_publisher_url,
 'nl'::text as feed_lang,
 replace(cast(date 'today' as text),'-','') as feed_start_date,
-replace(cast(max(validdate) as text),'-','') as feed_end_date,
+replace(max(todate)::text,'-','') as feed_end_date,
 nextval('gtfs_version') as feed_version
-FROM availabilityconditionday
+FROM activeavailabilitycondition
+WHERE operator_id like 'IFF:%'
 );
 
 create temporary table servicecalendar as (
@@ -109,8 +110,8 @@ operator_id as agency_id,
 name as agency_name,
 url as agency_url,
 timezone as agency_timezone,
-phone as agency_phone,
-language as agency_lang
+phone as agency_phone
+--language as agency_lang
 FROM operator
 WHERE operator_id in (select distinct agency_id from gtfs_routes)
 );
@@ -237,5 +238,5 @@ COPY (SELECT * FROM gtfs_stops) to '/tmp/stops.txt' CSV HEADER;
 COPY (SELECT * FROM gtfs_trips) to '/tmp/trips.txt' CSV HEADER;
 COPY (SELECT * FROM gtfs_stop_times) to '/tmp/stop_times.txt' CSV HEADER;
 COPY (SELECT * FROM gtfs_transfers) to '/tmp/transfers.txt' CSV HEADER;
-COPY (SELECT * FROM gtfs_fare_rules) to '/tmp/fare_rules.txt' CSV HEADER;
-COPY (SELECT * FROM gtfs_fare_attributes) to '/tmp/fare_attributes.txt' CSV HEADER;
+--COPY (SELECT * FROM gtfs_fare_rules) to '/tmp/fare_rules.txt' CSV HEADER;
+--COPY (SELECT * FROM gtfs_fare_attributes) to '/tmp/fare_attributes.txt' CSV HEADER;
