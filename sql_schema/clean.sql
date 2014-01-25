@@ -59,3 +59,15 @@ WHERE onwardpointref is not null) as x
 );
 
 DELETE from stoparea where id not in (select distinct stoparearef from stoppoint where stoparearef is not null) AND operator_id not like 'IFF%';
+
+DELETE FROM stoppoint as sp
+WHERE sp.operator_id in (select
+sp.operator_id
+from stoppoint as sp
+WHERE sp.operator_id like 'IFF:%'
+group by sp.operator_id having count(*) > 1) AND id not in (
+select DISTINCT ON (sp.operator_id)
+sp.id
+from stoppoint as sp
+WHERE sp.operator_id like 'IFF:%'
+ORDER BY operator_id ASC, sp.ID DESC);
