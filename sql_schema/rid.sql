@@ -133,7 +133,8 @@ create table Line(
     name varchar(255),
     monitored boolean,
     color_shield varchar(6),
-    color_text varchar(6)
+    color_text varchar(6),
+    url varchar(255)
 );
 
 create table Route(
