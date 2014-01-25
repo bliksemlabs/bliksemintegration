@@ -98,7 +98,8 @@ l.name as route_long_name,
 NULL::text as route_desc,
 gtfs_route_type as route_type,
 color_shield as route_color,
-color_text as route_text_color
+color_text as route_text_color,
+l.url as route_url
 FROM 
 line as l LEFT JOIN operator as o ON (l.operatorref = o.id) LEFT JOIN transportmode using (transportmode)
 WHERE l.id in (SELECT DISTINCT route_id FROM gtfs_trips)
