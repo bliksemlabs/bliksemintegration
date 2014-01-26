@@ -33,10 +33,10 @@ def getOperator():
                                'language'    : 'nl'}}
 
 def getMergeStrategies(conn):
-    return [] #TEMPORARY
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validdate) as fromdate FROM operday GROUP BY dataownercode
+SELECT 'UNITCODE' as type,dataownercode||':'||organizationalunitcode as unitcode,min(validdate) as fromdate,max(validdate) as todate FROM operday 
+GROUP BY dataownercode,organizationalunitcode
 """)
     rows = cur.fetchall()
     cur.close()
