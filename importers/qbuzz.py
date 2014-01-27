@@ -46,36 +46,6 @@ def setLineColors():
     conn = psycopg2.connect(database_connect)
     cur = conn.cursor()
     cur.execute("""
-update line set color_shield = '2B9F54' where operator_id = 'QBUZZ:g001';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g001';
-
-update line set color_shield = '2B9F54' where operator_id = 'QBUZZ:g002';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g002';
-
-update line set color_shield = '68a0e4' where operator_id = 'QBUZZ:g003';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g003';
-
-update line set color_shield = '187b99' where operator_id = 'QBUZZ:g004';
-update line set color_text = 'ffffff' where operator_id = 'QBUZZ:g004';
-
-update line set color_shield = 'EC5A5D' where operator_id = 'QBUZZ:g005';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g005';
-
-update line set color_shield = 'ec5a5d' where operator_id = 'QBUZZ:g006';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g006';
-
-update line set color_shield = 'f7df81' where operator_id = 'QBUZZ:g008';
-update line set color_text = '474747' where operator_id = 'QBUZZ:g008';
-
-update line set color_shield = 'f2a5f3' where operator_id = 'QBUZZ:g011';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g011';
-
-update line set color_shield = 'dc82e6' where operator_id = 'QBUZZ:g015';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g015';
-
-update line set color_shield = 'dc82e6' where operator_id = 'QBUZZ:g015';
-update line set color_text = '000000' where operator_id = 'QBUZZ:g015';
-
 --QLINK
 
 update line set color_shield = '00be5c' where operator_id = 'QBUZZ:g502';
