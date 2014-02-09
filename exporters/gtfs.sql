@@ -1,6 +1,7 @@
 create temporary table gtfs_feed_info as (
 SELECT 
 'OVapi'::text as feed_publisher_name,
+'NL'::text as feed_id,
 'http://www.ovapi.nl'::text as feed_publisher_url,
 'nl'::text as feed_lang,
 replace(cast(date 'today' as text),'-','') as feed_start_date,
@@ -50,6 +51,7 @@ SELECT
 lineref as route_id,
 service_id,
 j.id as trip_id,
+j.privatecode as realtime_trip_id,
 d.name as trip_headsign,
 j.name as trip_short_name,
 pc.name as trip_long_name,
