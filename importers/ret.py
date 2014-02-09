@@ -1,5 +1,5 @@
 from kv1_811 import *
-from inserter import insert,version_imported,reject
+from inserter import insert,version_imported,reject,setRefsDict,simple_dict_insert
 from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
@@ -41,6 +41,50 @@ UPDATE line set color_shield = '34b4e4', color_text= '000000' WHERE operator_id 
     cur.close()
     conn.commit()
     conn.close()
+
+def recycle_journeyids(conn,data):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+create temporary table NewJourney(
+    id bigserial primary key NOT NULL,
+    privatecode varchar(255) NOT NULL,
+    operator_id varchar(255) NOT NULL,
+    availabilityconditionRef integer NOT NULL,
+    journeypatternref integer NOT NULL,
+    timedemandgroupref integer NOT NULL,
+    productCategoryRef integer,
+    noticeassignmentRef integer,
+    departuretime integer,
+    blockref varchar(255),
+    name varchar(255),
+    lowfloor boolean,
+    hasLiftOrRamp boolean,
+    haswifi boolean,
+    bicycleAllowed boolean,
+    onDemand boolean,
+    isvirtual boolean default(false)
+);
+""")
+    for key,journey in data['JOURNEY'].items():
+        journey = deepcopy(journey)
+        setRefsDict(journey,data['AVAILABILITYCONDITION'],'availabilityconditionref')
+        setRefsDict(journey,data['JOURNEYPATTERN'],'journeypatternref')
+        setRefsDict(journey,data['TIMEDEMANDGROUP'],'timedemandgroupref')
+        setRefsDict(journey,data['NOTICEASSIGNMENT'],'noticeassignmentref',ignore_null=True)
+        setRefsDict(journey,data['PRODUCTCATEGORY'],'productcategoryref')
+        exists,id = simple_dict_insert(conn,'NEWJOURNEY',journey,check_existing=False,return_id=True)
+    cur.execute("""
+SELECT jn.operator_id,jo.id,jn.id as tmp_id
+FROM
+journey as jo,newjourney as jn
+WHERE
+jo.departuretime = jn.departuretime AND
+jo.privatecode = jn.privatecode
+""")
+    for row in cur.fetchall():
+        data['JOURNEY'][row['operator_id']]['id'] = row['id']
+        cur.execute("delete from newjourney where id = %s",[row['tmp_id']])
+        cur.execute("delete from journeytransfers where journeyref = %s or onwardjourneyref = %s",[row['id']]*2)
 
 def generatePool(conn):
     cur = conn.cursor()
@@ -108,6 +152,16 @@ def fixBob(conn):
 update line set linepublicnumber = 'B'||linepublicnumber,linename = 'B'||linename where cast(linepublicnumber as integer) < 20 and transporttype = 'BUS';""")
    cur.close
 
+def cleanDest(conn):
+   cur = conn.cursor()
+   cur.execute("""
+UPDATE dest SET destnamefull = replace(destnamefull,'A ','') WHERE destnamefull like 'A %';
+UPDATE dest SET destnamefull = replace(destnamefull,'B ','') WHERE destnamefull like 'B %';
+UPDATE dest SET destnamefull = replace(destnamefull,'C ','') WHERE destnamefull like 'C %';
+UPDATE dest SET destnamefull = replace(destnamefull,'D ','') WHERE destnamefull like 'D %';
+UPDATE dest SET destnamefull = replace(destnamefull,'E ','') WHERE destnamefull like 'E %';
+""")
+
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
     if datetime.strptime(meta['enddate'].replace('-',''),'%Y%m%d') < (datetime.now() - timedelta(days=1)):
@@ -128,6 +182,7 @@ def import_zip(path,filename,version):
         return
     try:
         fixBob(conn)
+        cleanDest(conn)
         generatePool(conn)
         data = {}
         data['OPERATOR'] = getOperator()
@@ -154,7 +209,7 @@ def import_zip(path,filename,version):
         data['NOTICEASSIGNMENT'] = {}
         data['NOTICE'] = {}
         data['NOTICEGROUP'] = {}
-        insert(data)
+        insert(data,recycle_journeyids=recycle_journeyids)
         conn.close()
         setLineColors()
     except:
