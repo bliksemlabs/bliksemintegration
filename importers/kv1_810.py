@@ -415,7 +415,7 @@ line
     cur.close()
     return lines
 
-def load(path,filename):
+def load(path,filename,point_from_pool=False):
     zip = zipfile.ZipFile(path+'/'+filename,'r')
     path_parts = zip.namelist()[0].split('/')
     validfrom = None
@@ -430,5 +430,7 @@ def load(path,filename):
     meta = importzip(conn,zip)
     if validfrom is not None:
         meta['validfrom'] = validfrom
+    if point_from_pool:
+        fix_pool(conn)
     checkUsrstopPoint(conn)
     return (meta,conn)

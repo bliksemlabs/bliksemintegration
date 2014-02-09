@@ -581,7 +581,49 @@ null;""")
         res += ', '.join(row)+'\n'
     raise Exception('USRSTOPs without POINT\n'+res)
 
-def load(path,filename):
+def fix_points(conn):
+    cur = conn.cursor()
+    cur.execute("""
+INSERT INTO POINT (
+SELECT DISTINCT ON (userstopcodebegin)
+p.tablename,
+p.version,
+p.implicit,
+p.dataownercode,
+userstopcodebegin as pointcode,
+validfrom,
+pointtype,
+coordinatesystemtype,
+locationx_ew,
+locationy_ns,
+locationz,
+p.description
+FROM 
+pool JOIN point as p USING (dataownercode,pointcode)
+ORDER BY userstopcodebegin ASC,distancesincestartoflink ASC,(pointtype = 'SP') DESC
+);
+
+INSERT INTO POINT (
+SELECT DISTINCT ON (userstopcodeend)
+p.tablename,
+p.version,
+p.implicit,
+p.dataownercode,
+userstopcodeend as pointcode,
+validfrom,
+pointtype,
+coordinatesystemtype,
+locationx_ew,
+locationy_ns,
+locationz,
+p.description
+FROM 
+pool JOIN point as p USING (dataownercode,pointcode)
+WHERE userstopcodeend NOT IN (SELECT userstopcodebegin FROM pool)
+ORDER BY userstopcodeend ASC,distancesincestartoflink DESC,(pointtype = 'SP') DESC
+);""")
+
+def load(path,filename,point_from_pool=False):
     zip = zipfile.ZipFile(path+'/'+filename,'r')
     if 'Csv.zip' in zip.namelist():
         zipfile.ZipFile.extract(zip,'Csv.zip','/tmp')
@@ -590,5 +632,7 @@ def load(path,filename):
     cur =  conn.cursor()
     cur.execute(schema)
     meta = importzip(conn,zip)
+    if point_from_pool:
+        fix_points(conn)
     checkUsrstopPoint(conn)
     return (meta,conn)
