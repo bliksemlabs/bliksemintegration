@@ -27,7 +27,7 @@ def getOperator():
              'UOV' :          {'privatecode' : 'UOV',
                                'operator_id' : 'UOV',
                                'name'        : 'U-OV',
-                               'phone'       : '0900-7289965',
+                               'phone'       : '0900-5252241',
                                'url'         : 'http://www.u-ov.info',
                                'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}}
@@ -82,7 +82,7 @@ update line set color_text = '000000' where operator_id = 'QBUZZ:g517';
     conn.close()
 
 def import_zip(path,filename,version):
-    meta,conn = load(path,filename)
+    meta,conn = load(path,filename,point_from_pool=True)
     try:
         data = {}
         data['OPERATOR'] = getOperator()

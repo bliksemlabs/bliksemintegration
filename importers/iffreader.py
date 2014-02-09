@@ -451,6 +451,11 @@ CREATE OR REPLACE FUNCTION add32time(departuretime text, seconds integer) RETURN
 as int4) * 60 + cast(split_part($1, ':', 2) as int4)) * 60 + cast(split_part($1, ':', 3) as int4) + coalesce($2, 0) as total) as xtotal $$ LANGUAGE
 SQL;
 
+DELETE FROM timetable_validity WHERE footnote not in (
+SELECT footnote FROM (select footnote,max(servicedate) as enddate from footnote group by footnote) as x WHERE enddate >= current_date - interval '1 
+days');
+DELETE FROM timetable_service WHERE serviceid not in (SELECT serviceid FROM timetable_validity);
+
 update timetable_stop set departuretime = add32time(departuretime,3600),arrivaltime = add32time(arrivaltime,3600) where station in (select shortname
 from station where country = 'GB');
 
