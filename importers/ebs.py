@@ -50,10 +50,20 @@ SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validdate) as fromdate FROM
     cur.close()
     return rows
 
+def cleanDest(conn):
+   cur = conn.cursor()
+   cur.execute("""
+UPDATE dest SET destnamefull = replace(destnamefull,'N01 ','') WHERE destnamefull like 'N01 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N04 ','') WHERE destnamefull like 'N04 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N10 ','') WHERE destnamefull like 'N10 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N14 ','') WHERE destnamefull like 'N14 %';
+""")
+
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
     fixLinenumbers(conn)
     setProductFormulas(conn)    
+    cleanDest(conn)
     try:
         data = {}
         data['OPERATOR'] = getOperator()
@@ -110,6 +120,7 @@ def download(url,filename):
 
 
 url = 'http://data.ndovloket.nl/ebs/'
+url = 'http://kv1.openov.nl/ebs/'
 
 def sync():
     f = urllib2.urlopen(url+'?order=d')
