@@ -60,7 +60,7 @@ create table AvailabilityConditionDay(
     id serial8,
     availabilityconditionRef integer references AvailabilityCondition(id) NOT NULL,
     validdate date NOT NULL,
-    isavailable boolean,
+    isavailable boolean default(true),
     primary key (availabilityconditionRef,validdate)
 );
 
