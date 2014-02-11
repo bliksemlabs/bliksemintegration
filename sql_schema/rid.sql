@@ -83,6 +83,7 @@ create table notice(
 
 create table noticegroup(
     id integer NOT NULL,
+    operator_id varchar(255),
     noticeRef integer references notice(id),
     primary key(id,noticeref)
 );
