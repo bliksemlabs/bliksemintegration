@@ -105,9 +105,9 @@ def import_zip(path,filename,version):
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'])
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn)
         data['JOURNEYTRANSFERS'] = getTripTransfers(conn)
-        data['NOTICEASSIGNMENT'] = {}
-        data['NOTICE'] = {}
-        data['NOTICEGROUP'] = {}
+        data['NOTICEASSIGNMENT'] = getNoticeAssignments(conn)
+        data['NOTICE'] = getNotices(conn)
+        data['NOTICEGROUP'] = getNoticeGroups(conn)
         conn.close()
         insert(data,recycle_journeyids=recycle_journeyids)
     except:

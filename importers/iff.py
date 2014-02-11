@@ -235,6 +235,52 @@ WHERE code in (select distinct transmode from timetable_transport);
     cur.close()
     return productcategories
 
+def getNotices(conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    notices = {}
+    cur.execute("""
+SELECT
+code as operator_id,
+code as publiccode,
+code as shortcode,
+description as name FROM trnsattr
+WHERE code in (select distinct code from timetable_attribute);
+""")
+    for row in cur.fetchall():
+        notices[row['operator_id']] = row
+    cur.close()
+    return notices
+
+def getNoticeGroups(conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    noticegroups = {}
+    cur.execute("""
+SELECT                    
+'IFF:'||attrs::text as operator_id,array_agg(attr) as noticerefs 
+FROM (SELECT DISTINCT ON (attrs,attr) attrs,unnest(attrs) as attr  FROM timetable) as t
+GROUP BY attrs;
+""")
+    for row in cur.fetchall():
+        noticegroups[row['operator_id']] = row
+    cur.close()
+    return noticegroups
+
+def getNoticeAssignments(conn):
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    noticeassignments = {}
+    cur.execute("""
+SELECT DISTINCT ON (attrs)
+'IFF:'||attrs::text as noticegroupref,
+'IFF:'||attrs::text as operator_id,
+attrs::text as name
+FROM timetable
+WHERE attrs is not null;
+""")
+    for row in cur.fetchall():
+        noticeassignments[row['operator_id']] = row
+    cur.close()
+    return noticeassignments
+
 def getDestinationDisplays(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     destinationdisplays = {}
@@ -363,7 +409,7 @@ NULL as operator_id,
 'IFF:'||p1.station||':'||coalesce(p1.platform,'0') as pointref,
 'IFF:'||p2.station||':'||coalesce(p2.platform,'0') as onwardpointref,
 NULL as destinationdisplayref,
-NULL as noticeassignmentRef,
+'IFF:'||p1.attrs::text as noticeassignmentRef,
 NULL as administrativezoneref,
 p1.forboarding as iswaitpoint,
 0 as waittime,

@@ -292,6 +292,30 @@ SELECT true FROM rejectedversion WHERE operator_id = %s
     conn.close()
     return len(result) > 0
 
+def import_noticegroups(conn,data):
+    cur = conn.cursor()
+    for operator_id,group in data['NOTICEGROUP'].items():
+        noticerefs = []
+        for notice in group['noticerefs']:
+            noticerefs.append(data['NOTICE'][notice])
+        cur.execute("""
+SELECT g.id,array_agg(n.id ORDER BY n.id) 
+FROM noticegroup as g JOIN notice AS  n ON (n.id = g.noticeref)
+WHERE g.operator_id = %s
+GROUP BY g.id;""",[operator_id])
+        id = -1
+        for match in cur.fetchall():
+            if set(match[1]) == set(noticerefs):
+                id = match[0]
+                break
+        if id == -1:
+            cur.execute("SELECT nextval('noticegroup_id_seq')")
+            id = cur.fetchone()[0]
+            for notice in group['noticerefs']:
+                cur.execute("INSERT INTO noticegroup (id,operator_id,noticeref) VALUES (%s,%s,%s)",[id,operator_id,noticeref])
+        data['NOTICEGROUP'][operator_id] = id
+    cur.close()
+
 def reject(data):
     conn = psycopg2.connect(database_connect)
     try:
@@ -316,6 +340,11 @@ def insert(data,recycle_journeyids=None):
         simple_dictdict_insert(conn,'VERSION',data['VERSION'])
         simple_dictdict_insert(conn,'DESTINATIONDISPLAY',data['DESTINATIONDISPLAY'])
         simple_dictdict_insert(conn,'PRODUCTCATEGORY',data['PRODUCTCATEGORY'])
+        if 'NOTICE' in data:
+            simple_dictdict_insert(conn,'NOTICE',data['NOTICE'])
+            import_noticegroups(conn,data)
+            setRefs(data['NOTICEASSIGNMENT'],data['NOTICEGROUP'],'noticegroupref')
+            simple_dictdict_insert(conn,'NOTICEASSIGNMENT',data['NOTICEASSIGNMENT'])
         if 'ADMINISTRATIVEZONE' in data:
             simple_dictdict_insert(conn,'ADMINISTRATIVEZONE',data['ADMINISTRATIVEZONE'])
         setRefs(data['LINE'],data['OPERATOR'],'operatorref')
