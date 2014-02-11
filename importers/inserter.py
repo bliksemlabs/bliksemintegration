@@ -311,7 +311,7 @@ GROUP BY g.id;""",[operator_id])
         if id == -1:
             cur.execute("SELECT nextval('noticegroup_id_seq')")
             id = cur.fetchone()[0]
-            for notice in group['noticerefs']:
+            for noticeref in noticerefs:
                 cur.execute("INSERT INTO noticegroup (id,operator_id,noticeref) VALUES (%s,%s,%s)",[id,operator_id,noticeref])
         data['NOTICEGROUP'][operator_id] = id
     cur.close()
