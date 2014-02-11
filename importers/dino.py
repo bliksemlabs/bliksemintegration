@@ -345,12 +345,16 @@ FROM rec_trip LEFT JOIN set_vehicle_type USING (version,veh_type_nr)
     cur.close()
     return journeys
 
-def getVersion(conn,prefix=None):
+def getVersion(conn,prefix=None,filename=None):
     if prefix is None:
         prefix = 'DINO'
+    if filename is None:
+        filename = ''
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-select '1' as datasourceref, %s||':'||version as operator_id,period_date_from as startdate,period_date_to as enddate,version as privatecode, version_text as description from set_version;""",[prefix])
+select '1' as datasourceref, %s||':'||version as operator_id,period_date_from as startdate,period_date_to as enddate,version||':'||%s as privatecode, 
+version_text as description
+from set_version;""",[prefix,filename])
     version = {}
     for row in cur.fetchall():
         version[row['operator_id']] = row
