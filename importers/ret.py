@@ -160,7 +160,13 @@ UPDATE dest SET destnamefull = replace(destnamefull,'B ','') WHERE destnamefull 
 UPDATE dest SET destnamefull = replace(destnamefull,'C ','') WHERE destnamefull like 'C %';
 UPDATE dest SET destnamefull = replace(destnamefull,'D ','') WHERE destnamefull like 'D %';
 UPDATE dest SET destnamefull = replace(destnamefull,'E ','') WHERE destnamefull like 'E %';
+UPDATE dest SET destnamemain = replace(destnamemain,'A ','') WHERE destnamemain like 'A %';
+UPDATE dest SET destnamemain = replace(destnamemain,'B ','') WHERE destnamemain like 'B %';
+UPDATE dest SET destnamemain = replace(destnamemain,'C ','') WHERE destnamemain like 'C %';
+UPDATE dest SET destnamemain = replace(destnamemain,'D ','') WHERE destnamemain like 'D %';
+UPDATE dest SET destnamemain = replace(destnamemain,'E ','') WHERE destnamemain like 'E %';
 """)
+   cur.close()
 
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
