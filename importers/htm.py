@@ -138,6 +138,18 @@ SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate,max(
     cur.close()
     return rows
 
+def cleanDest(conn):
+   cur = conn.cursor()
+   cur.execute("""
+UPDATE dest SET destnamefull = replace(destnamefull,'N1 ','') WHERE destnamefull like 'N1 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N2 ','') WHERE destnamefull like 'N2 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N3 ','') WHERE destnamefull like 'N3 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N4 ','') WHERE destnamefull like 'N4 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N5 ','') WHERE destnamefull like 'N5 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N6 ','') WHERE destnamefull like 'N6 %';
+UPDATE dest SET destnamefull = replace(destnamefull,'N7 ','') WHERE destnamefull like 'N7 %';
+""")
+
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
     if datetime.strptime(meta['enddate'].replace('-',''),'%Y%m%d') < (datetime.now() - timedelta(days=1)):
@@ -157,6 +169,7 @@ def import_zip(path,filename,version):
         conn.close()
         return
     try:
+        cleanDest(conn)
         generatePool(conn)
         data = {}
         data['OPERATOR'] = getOperator()
