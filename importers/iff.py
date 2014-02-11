@@ -410,6 +410,7 @@ def getOperator(conn):
                  'GVB'     : {'url' : 'http://www.gvb.nl',         'language' : 'nl', 'phone' : '0900-8011'},
                  'NMBS'    : {'url' : 'http://www.nmbs.be',        'language' : 'nl', 'phone' : '+3225282828'},
                  'GVU'     : {'url' : 'http://www.gvu.nl',         'language' : 'nl', 'phone' : '0900-8998959'},
+                 'LCB'     : {'url' : 'http://www.locon-benelux.com', 'language' : 'nl', 'phone' : '038-4606779'},
                  'EUROSTAR': {'url' : 'http://www.eurostar.co.uk', 'language' : 'nl', 'phone' : '0900-9296'},
                  'BRENG'   : {'url' : 'http://www.breng.nl',       'language' : 'nl', 'phone' : '026-2142140'},
                  'VEO'     : {'url' : 'http://www.veolia.nl',      'language' : 'nl', 'phone' : '088-0761111'},
