@@ -78,7 +78,8 @@ create table notice(
     operator_id varchar(255),
     publiccode varchar(255),
     shortcode varchar(255),
-    name varchar(255) NOT NULL
+    name varchar(255) NOT NULL,
+    processingcode integer --Storage for IFF processingcodes, are already translated into RID attributes where possible anyway
 );
 
 create table noticegroup(
