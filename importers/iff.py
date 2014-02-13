@@ -243,7 +243,9 @@ SELECT
 code as operator_id,
 code as publiccode,
 code as shortcode,
-description as name FROM trnsattr
+description as name,
+processingcode
+FROM trnsattr
 WHERE code in (select distinct code from timetable_attribute);
 """)
     for row in cur.fetchall():
