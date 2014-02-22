@@ -379,6 +379,19 @@ FROM
 ON (pjp_from.journeypatternref = pjp_to.journeypatternref AND pjp_from.idx = pjp_to.idx-1)
 );
 
+CREATE VIEW LinescheduledLink AS (
+SELECT DISTINCT l.id,pjp_from.pointref as from_pointref,pjp_to.pointref as to_pointref
+FROM
+(SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
+                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_from JOIN 
+(SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
+                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_to
+ON (pjp_from.journeypatternref = pjp_to.journeypatternref AND pjp_from.idx = pjp_to.idx-1)
+            JOIN journeypattern as jp ON (jp.id = pjp_from.journeypatternref)
+            JOIN ROUTE as r ON (r.id = routeref)
+            JOIN line as l ON (l.id = lineref)
+);
+
 --indices
 create index on journey(availabilityconditionref);
 create index on journey(journeypatternref);
