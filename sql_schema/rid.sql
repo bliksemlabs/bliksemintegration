@@ -369,6 +369,16 @@ create table rail_fare_prices (
     first40 varchar(6)
 );
 
+CREATE VIEW scheduledlink AS (
+SELECT DISTINCT pjp_from.pointref as from_pointref,pjp_to.pointref as to_pointref
+FROM
+(SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
+                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_from JOIN 
+(SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
+                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_to
+ON (pjp_from.journeypatternref = pjp_to.journeypatternref AND pjp_from.idx = pjp_to.idx-1)
+);
+
 --indices
 create index on journey(availabilityconditionref);
 create index on journey(journeypatternref);
