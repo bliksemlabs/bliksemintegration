@@ -1,0 +1,3 @@
+lxml
+psycopg2
+beautifulsoup4
