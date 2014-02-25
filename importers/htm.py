@@ -170,7 +170,8 @@ def import_zip(path,filename,version):
         return
     try:
         cleanDest(conn)
-        generatePool(conn)
+        if pool_generation_enabled:
+            generatePool(conn)
         data = {}
         data['OPERATOR'] = getOperator()
         data['MERGESTRATEGY'] = getMergeStrategies(conn)
