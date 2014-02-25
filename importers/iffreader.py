@@ -407,6 +407,7 @@ $$ LANGUAGE SQL;
 CREATE OR REPLACE FUNCTION 
 route(servicenumber integer,variant integer) RETURNS integer AS $$
 SELECT CASE WHEN (servicenumber = 0 and variant is null) THEN NULL
+            WHEN (servicenumber = 0 and variant between 900000 and 999999) THEN NULL
             WHEN (coalesce(servicenumber,variant) between 0 and 99)    THEN (coalesce(servicenumber,variant)/10)*10
             WHEN (coalesce(servicenumber,variant) between 100 and 109) THEN 100
             WHEN (coalesce(servicenumber,variant) between 140 and 149) THEN 140
