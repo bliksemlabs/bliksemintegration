@@ -2,6 +2,7 @@
 
 # C extensions
 *.so
+*.dat
 
 # Packages
 *.egg
@@ -34,3 +35,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+#Log files
+error.log
+
+##Backup files
+backup/
