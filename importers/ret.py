@@ -79,7 +79,8 @@ FROM
 journey as jo,newjourney as jn
 WHERE
 jo.departuretime = jn.departuretime AND
-jo.privatecode = jn.privatecode
+jo.privatecode = jn.privatecode AND 
+jo.availabilityconditionref NOT IN (SELECT DISTINCT availabilityconditionref FROM availabilityconditionday WHERE isavailable = true)
 """)
     for row in cur.fetchall():
         data['JOURNEY'][row['operator_id']]['id'] = row['id']
