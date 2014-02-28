@@ -361,12 +361,12 @@ create table rail_fare (
 
 create table rail_fare_prices (
     fare_units integer primary key,
-    secondfull varchar(6),
-    second20 varchar(6),
-    second40 varchar(6),
-    firstfull varchar(6),
-    first20 varchar(6),
-    first40 varchar(6)
+    secondfull integer,
+    second20 integer,
+    second40 integer,
+    firstfull integer,
+    first20 integer,
+    first40 integer
 );
 
 CREATE VIEW scheduledlink AS (
