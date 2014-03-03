@@ -495,6 +495,8 @@ concat_ws(':',dataownercode,lineplanningnumber,journeypatterncode) as journeypat
 NULL as timedemandgroupref,
 CASE WHEN (prodformtype = 'belb') THEN '2'
      WHEN (prodformtype = 'buur') THEN '1'
+     WHEN (prodformtype = 'Scho') THEN '42'
+     WHEN (prodformtype = 'stad') THEN '43'
      ELSE '0' end as productCategoryRef,
 NULL as noticeassignmentRef,
 NULL as departuretime,
