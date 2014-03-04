@@ -493,7 +493,7 @@ def getJourneys(timedemandGroupRefForJourney,conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
 SELECT DISTINCT ON (serviceid,line_id,patterncode,servicenumber)
-concat_ws(':','IFF',coalesce(variant,servicenumber)) as privatecode,
+concat_ws(':','IFF',transmode,coalesce(variant,servicenumber)) as privatecode,
 concat_ws(':','IFF',serviceid,line_id,v.footnote,coalesce(variant,servicenumber)) as operator_id,
 concat_ws(':', 'IFF',versionnumber,v.footnote) as availabilityconditionRef,
 concat_ws(':','IFF',line_id,patterncode) as journeypatternref,
@@ -512,7 +512,9 @@ CASE WHEN transmode in ('NSS','NSB','B','BNS','X','U','Y') THEN false
      WHEN transmode in('IC','SPR','S','ST','INT','ES','THA','TGV','ICD') THEN true 
      ELSE NULL END as bicycleAllowed,
 CASE WHEN (ARRAY['RESV']::varchar[] <@ attrs) THEN true ELSE NULL END as onDemand
-FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid),delivery
+FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid)
+               LEFT JOIN company ON (companynumber = company.company)
+,delivery
 ORDER BY serviceid,line_id,patterncode,servicenumber,stoporder
 """)
     journeys = {}
