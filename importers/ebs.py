@@ -3,7 +3,7 @@ from inserter import insert,version_imported
 from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
-import logging 
+import logging
 
 logger = logging.getLogger("importer")
 
@@ -41,6 +41,57 @@ UPDATE jopatili SET productformulatype = '37' WHERE confinrelcode = 'wtlR' and l
     cur.close()
     return
 
+def generatePool(conn):
+    cur = conn.cursor()
+    cur.execute("""
+CREATE TEMPORARY TABLE temp_pool as (
+SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,row_number() OVER (PARTITION BY
+dataownercode,userstopcodebegin,userstopcodeend,transporttype ORDER BY index) as index,locationx_ew,locationy_ns
+FROM
+((SELECT DISTINCT ON (userstopcodebegin,userstopcodeend,transporttype)
+ dataownercode,userstopcodebegin,userstopcodeend,transporttype,0 as index,locationx_ew,locationy_ns
+ FROM pool JOIN point using (version,dataownercode,pointcode)
+ ORDER BY userstopcodebegin,userstopcodeend,transporttype,distancesincestartoflink ASC)
+UNION
+(SELECT DISTINCT ON (userstopcodebegin,userstopcodeend,transporttype)
+ dataownercode,userstopcodebegin,userstopcodeend,transporttype,99999 as index,locationx_ew,locationy_ns
+ FROM pool JOIN point using (version,dataownercode,pointcode)
+ ORDER BY userstopcodebegin,userstopcodeend,transporttype,distancesincestartoflink DESC)
+UNION
+SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,(dp).path[1] as index,st_x((dp).geom)::integer as
+locationx_ew,st_y((dp).geom)::integer as locationy_ns
+FROM
+(SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,st_dumppoints(geom) as dp FROM ebs_pool_geom) as x) as pool
+ORDER BY dataownercode,userstopcodebegin,userstopcodeend,transporttype,index);
+
+DELETE FROM temp_pool WHERE userstopcodebegin||':'||userstopcodeend||':'||transporttype NOT in (SELECT DISTINCT
+userstopcodebegin||':'||userstopcodeend||':'||transporttype FROM ebs_pool_geom);
+
+INSERT INTO POINT (
+SELECT DISTINCT ON (locationx_ew,locationy_ns)
+'POINT',1,'I' as implicit,'EBS','OG'||row_number() OVER (ORDER BY locationx_ew,locationy_ns),current_date as validfrom,'PL' as pointtype,'RD' as
+coordinatesystemtype,locationx_ew,locationy_ns,0 as locationz, NULL as description
+FROM
+temp_pool where locationx_ew||':'||locationy_ns not in (select distinct locationx_ew||':'||locationy_ns from point where version = 1)
+);
+DELETE FROM pool WHERE userstopcodebegin||':'||userstopcodeend||':'||transporttype in (SELECT DISTINCT
+userstopcodebegin||':'||userstopcodeend||':'||transporttype FROM temp_pool) and version = 1;
+INSERT INTO pool(
+SELECT DISTINCT ON (version, dataownercode, userstopcodebegin, userstopcodeend, linkvalidfrom, pointcode, transporttype)
+'POOL',l.version,'I',p.dataownercode,p.userstopcodebegin,p.userstopcodeend,l.validfrom as linkvalidfrom,p.dataownercode,pt.pointcode,
+SUM(coalesce(st_distance(st_setsrid(st_makepoint(p.locationx_ew,p.locationy_ns),28992),st_setsrid(st_makepoint(prev.locationx_ew,prev.locationy_ns),28992))::integer,0))
+OVER (PARTITION BY l.version,p.dataownercode,p.userstopcodebegin,p.userstopcodeend,p.transporttype
+      ORDER BY p.index
+      ROWS between UNBOUNDED PRECEDING and 0 PRECEDING) as distancesincestartoflink,
+NULL as sgementspeed,NULL as localpointspeed,NULL as description,p.transporttype
+FROM
+temp_pool as p JOIN link as l USING (dataownercode,userstopcodebegin,userstopcodeend,transporttype)
+               JOIN (SELECT DISTINCT ON (version,locationx_ew,locationy_ns) version,locationx_ew,locationy_ns,pointcode
+                     FROM POINT ) AS pt USING (locationx_ew,locationy_ns)
+               LEFT JOIN temp_pool as prev ON (p.index = prev.index +1 AND p.transporttype = prev.transporttype
+                                               AND p.userstopcodebegin = prev.userstopcodebegin AND p.userstopcodeend = prev.userstopcodeend));
+""")
+
 def getMergeStrategies(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
@@ -62,8 +113,12 @@ UPDATE dest SET destnamefull = replace(destnamefull,'N14 ','') WHERE destnameful
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
     fixLinenumbers(conn)
-    setProductFormulas(conn)    
+    setProductFormulas(conn)
     cleanDest(conn)
+    pool_function = getFakePool811
+    if pool_generation_enabled:
+        generatePool(conn)
+        pool_function = getPool811
     try:
         data = {}
         data['OPERATOR'] = getOperator()
@@ -84,7 +139,7 @@ def import_zip(path,filename,version):
         data['PRODUCTCATEGORY'] = getBISONproductcategories()
         data['ADMINISTRATIVEZONE'] = getAdministrativeZones(conn)
         timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroups(conn)
-        routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getFakePool811)
+        routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,pool_function)
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'])
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn)
         data['NOTICEASSIGNMENT'] = {}
