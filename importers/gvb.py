@@ -197,7 +197,7 @@ DELETE FROM availabilitycondition WHERE id IN
     conn.close()
 
 def sync():
-    tree = etree.parse(kv1index_gvb)
+    tree = etree.parse(urllib2.urlopen(kv1index_gvb))
     index = []
     for periode in tree.findall('periode'):
         file = {}
