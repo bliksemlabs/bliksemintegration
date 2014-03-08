@@ -69,7 +69,7 @@ def calculateTimeDemandGroups(conn):
     journeyinfo = {}
     cur.execute("""
 SELECT concat_ws(':','IFF',serviceid,line_id,footnote,coalesce(variant,servicenumber)) as JOURNEY_id, 
-array_agg(cast(stoporder as integer) order by stoporder) as stoporders,array_agg(toseconds(coalesce(arrivaltime,departuretime),0) order by stoporder) as 
+array_agg(cast(stoporder*10 as integer) order by stoporder) as stoporders,array_agg(toseconds(coalesce(arrivaltime,departuretime),0) order by stoporder) as 
 arrivaltimes,array_agg(toseconds(coalesce(departuretime,arrivaltime),0) order by stoporder) as departuretimes
 FROM passtimes
 GROUP BY JOURNEY_id
@@ -112,10 +112,14 @@ coalesce(x,0) as rd_x,
 coalesce(y,0) as rd_y,
 platform as platformcode
 FROM 
-(SELECT DISTINCT ON (station,platform) station,platform,station||':'||coalesce(platform,'0') as stopid FROM passtimes) as stations
+(SELECT DISTINCT ON (station,platform) station,platform,stopid FROM (
+SELECT station,platform,station||':'||coalesce(platform,'0') as stopid FROM passtimes
+UNION
+SELECT DISTINCT ON (station) station,NULL::text as platform,station||':0' as stopid from passtimes) as x) as stations
           LEFT JOIN (select country,shortname as station,trainchanges,name,x,y,st_transform(st_setsrid(st_makepoint(x,y),28992),4326) as the_geom 
 from station) as station USING (station)
           LEFT JOIN quays ON (stopid = quays.id)                          
+;
 """)
     for row in cur.fetchall():
         if row['rd_x'] is None:
@@ -405,7 +409,7 @@ ORDER BY line_id,patterncode,stoporder ASC) as y
     cur.execute("""
 SELECT DISTINCT ON (p1.line_id,p1.patterncode,p1.stoporder)
 'IFF:'||p1.line_id||':'||p1.patterncode as journeypatternref,
-p1.stoporder::integer as pointorder,
+p1.stoporder::integer*10 as pointorder,
 NULL as privatecode,
 NULL as operator_id,
 'IFF:'||p1.station||':'||coalesce(p1.platform,'0') as pointref,
@@ -436,7 +440,7 @@ ORDER BY p1.line_id,p1.patterncode,p1.stoporder ASC
                 distance = point['distancefromstart']
                 row['distancefromstartroute'] = distance
                 break
-        if distance == 0 and int(row['pointorder']) > 3:
+        if distance == 0 and int(row['pointorder']) > 30:
             raise Exception('distancefromstartroute going wrong'+str(journeypatterns[row['journeypatternref']]['POINTS']))
         row['distancefromstartroute'] = distance
         journeypatterns[row['journeypatternref']]['POINTS'].append(row)
