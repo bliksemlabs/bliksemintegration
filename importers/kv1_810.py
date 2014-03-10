@@ -37,7 +37,7 @@ ORDER BY operator_id,pointorder
             points = timedemandgroups[row['operator_id']]['POINTS']
             point_dict = {'pointorder' : row['pointorder'],'totaldrivetime' : totaldrivetime, 'stopwaittime' : stopwaittime}
             points.append(point_dict)
-            if row['drivetime'] is None: 
+            if row['drivetime'] is None:
                 totaldrivetime = None
                 stopwaittime = None
             else:
@@ -68,21 +68,21 @@ GROUP BY dataownercode, organizationalunitcode,timetableversioncode,periodgroupc
     for row in cur.fetchall():
         availabilityConditions[row['operator_id']] = row
     cur.execute("""
-SELECT 
+SELECT
 concat_ws(':',dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,pujo.daytype) as availabilityconditionref,
 array_agg(DISTINCT validdate ORDER BY validdate) as validdates,
 true as isavailable
-FROM (SELECT DISTINCT dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype FROM pujo) as pujo 
+FROM (SELECT DISTINCT dataownercode, organizationalunitcode,timetableversioncode,periodgroupcode,specificdaycode,daytype FROM pujo) as pujo
 JOIN (
-SELECT 
-c.dataownercode,c.organizationalunitcode,c.periodgroupcode,timetableversioncode,c.specificdaycode,c.validdate,coalesce(daytypeason,extract(isodow 
+SELECT
+c.dataownercode,c.organizationalunitcode,c.periodgroupcode,timetableversioncode,c.specificdaycode,c.validdate,coalesce(daytypeason,extract(isodow
 from c.validdate)) as daytype
-FROM 
-(SELECT 
-dataownercode,organizationalunitcode,periodgroupcode,timetableversioncode,specificdaycode,generate_series(coalesce(tv.validfrom,pv.validfrom),coalesce(tv.validthru,pv.validthru),interval 
-'1 day')::date as validdate
+FROM
+(SELECT
+dataownercode,organizationalunitcode,periodgroupcode,timetableversioncode,specificdaycode,
+generate_series(coalesce(pv.validfrom,tv.validfrom),coalesce(pv.validthru,tv.validthru),interval '1 day')::date as validdate
 FROM tive AS tv JOIN pegrval AS pv USING (dataownercode,organizationalunitcode,periodgroupcode)) as c
-LEFT JOIN excopday as ex ON (ex.dataownercode = c.dataownercode AND ex.specificdaycode = c.specificdaycode AND 
+LEFT JOIN excopday as ex ON (ex.dataownercode = c.dataownercode AND ex.specificdaycode = c.specificdaycode AND
 c.validdate::date = ex.validdate::date)
 ORDER BY c.validdate desc) as calendar USING (dataownercode,organizationalunitcode,periodgroupcode,timetableversioncode,specificdaycode)
 WHERE position(calendar.daytype::integer::text in pujo.daytype) != 0
@@ -107,9 +107,9 @@ NULL as noticeassignmentRef,
 toseconds(departuretime,0) as departuretime,
 NULL as blockref,
 cast(journeynumber as integer) as name,
-CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL 
+CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL
      ELSE (wheelchairaccessible = 'ACCESSIBLE') END as lowfloor,
-CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL 
+CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL
      ELSE (wheelchairaccessible = 'ACCESSIBLE') END as hasLiftOrRamp,
 NULL as haswifi,
 CASE WHEN (dataownercode = 'CXX' and lineplanningnumber in ('N419','Z050','Z060','Z020')) THEN true
@@ -145,9 +145,9 @@ NULL as noticeassignmentRef,
 NULL as departuretime,
 NULL as blockref,
 cast(journeynumber as integer) as name,
-CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL 
+CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL
      ELSE (wheelchairaccessible = 'ACCESSIBLE') END as lowfloor,
-CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL 
+CASE WHEN (wheelchairaccessible = 'UNKNOWN') THEN NULL
      ELSE (wheelchairaccessible = 'ACCESSIBLE') END as hasLiftOrRamp,
 NULL as haswifi,
 CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN true
@@ -183,7 +183,7 @@ destinationdisplayref
 FROM jopa left join ( SELECT DISTINCT ON ( dataownercode, lineplanningnumber, journeypatterncode)
 			 dataownercode, lineplanningnumber, journeypatterncode,dataownercode||':'||destcode as destinationdisplayref
 			FROM jopatili
-			ORDER BY dataownercode, lineplanningnumber, journeypatterncode,timinglinkorder ) as jopatili 
+			ORDER BY dataownercode, lineplanningnumber, journeypatterncode,timinglinkorder ) as jopatili
                     USING (dataownercode, lineplanningnumber, journeypatterncode)""")
     for row in cur.fetchall():
         journeypatterns[row['operator_id']] = row
@@ -204,7 +204,7 @@ istimingstop as iswaitpoint,
 0 as waittime,
 NULL as requeststop,
 getout as foralighting,
-CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false 
+CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false
      ELSE getin END as forboarding,
 0 as distancefromstartroute,
 coalesce(sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,journeypatterncode
@@ -259,7 +259,7 @@ def getAdministrativeZones(conn):
 SELECT
 dataownercode||':'||confinrelcode as operator_id,
 description as name
-FROM 
+FROM
 confinrel LEFT JOIN conarea using (dataownercode,concessionareacode)
 """)
     administrativezones = {}
@@ -272,7 +272,7 @@ def getLineWithGeneratedNames(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     lines = {}
     cur.execute("""
-SELECT DISTINCT ON (operator_id) 
+SELECT DISTINCT ON (operator_id)
 operator_id,
 CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATERBUS'
      WHEN (dataownercode = 'HTM' and transportmode = 'BUS' and cast(lineplanningnumber as integer) <= 42) THEN 'HTMBUZZ'
@@ -281,10 +281,10 @@ CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATE
      WHEN (dataownercode = 'CXX' and substring(lineplanningnumber,1,1) IN ('A','X'))    THEN 'BRENG'
      WHEN (dataownercode = 'CXX' and substring(lineplanningnumber,1,1) = 'L')           THEN 'HERMES'
      WHEN (dataownercode = 'SYNTUS' and description like 'TW%')           THEN 'TWENTS'
-     ELSE dataownercode END as operatorref, 
+     ELSE dataownercode END as operatorref,
 privatecode,publiccode,TransportMode,
 CASE WHEN (publiccode != linename) THEN linename ELSE name END as name
-FROM 
+FROM
 ((SELECT
 u.dataownercode,l.lineplanningnumber,l.description,
 u.dataownercode||':'||l.lineplanningnumber as operator_id,
@@ -294,9 +294,9 @@ transporttype as TransportMode,
 replace( CASE WHEN (terug.destnamemain is null) THEN concat_ws(' - ',u.name,dest_heen.destnamefull)
      ELSE concat_ws(' - ',dest_heen.destnamefull,terug.destnamemain) END,linepublicnumber||' ','') as name,
 1 as priority,linename
- FROM 
+ FROM
  ((SELECT DISTINCT ON (dataownercode,lineplanningnumber) * FROM (
-  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode, 
+  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode,
 scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
   FROM
     (SELECT DISTINCT ON (dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
@@ -311,9 +311,9 @@ scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
         ORDER BY dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder ASC) as jopatiliheen
   JOIN dest as dest_heen USING (dataownercode,destcode)
   USING (dataownercode,lineplanningnumber,journeypatterncode))
-LEFT JOIN 
+LEFT JOIN
  ((SELECT DISTINCT ON (dataownercode,lineplanningnumber) * FROM (
-  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode, 
+  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode,
 scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
   FROM
     (SELECT DISTINCT ON (dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
@@ -330,7 +330,7 @@ scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
   USING (dataownercode,lineplanningnumber,journeypatterncode)) as terug USING (dataownercode,lineplanningnumber)
   JOIN (SELECT dataownercode,userstopcode,name from usrstop) as u ON (u.dataownercode = jopatiliheen.dataownercode AND jopatiliheen.userstopcodebegin = u.userstopcode)
   JOIN line as l ON (l.dataownercode = u.dataownercode AND l.lineplanningnumber = jopatiliheen.lineplanningnumber))
-UNION 
+UNION
 (SELECT
 u.dataownercode,l.lineplanningnumber,l.description,
 u.dataownercode||':'||l.lineplanningnumber as operator_id,
@@ -340,9 +340,9 @@ transporttype as TransportMode,
 replace( CASE WHEN (terug.destnamemain is null) THEN concat_ws(' - ',u.name,dest_heen.destnamefull)
      ELSE concat_ws(' - ',dest_heen.destnamefull,terug.destnamemain) END,linepublicnumber||' ','') as name,
 2 as priority,linename
- FROM 
+ FROM
  ((SELECT DISTINCT ON (dataownercode,lineplanningnumber) * FROM (
-  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode, 
+  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode,
 scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
   FROM
     (SELECT DISTINCT ON (dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
@@ -357,9 +357,9 @@ scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
         ORDER BY dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder ASC) as jopatiliheen
   JOIN dest as dest_heen USING (dataownercode,destcode)
   USING (dataownercode,lineplanningnumber,journeypatterncode))
-LEFT JOIN 
+LEFT JOIN
  ((SELECT DISTINCT ON (dataownercode,lineplanningnumber) * FROM (
-  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode, 
+  SELECT dataownercode,lineplanningnumber,journeypatterncode,count((dataownercode, organizationalunitcode, schedulecode,
 scheduletypecode, lineplanningnumber, journeynumber)) as journeycount
   FROM
     (SELECT DISTINCT ON (dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber)
@@ -401,7 +401,7 @@ CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATE
                                                                                              THEN 'OVREGIOY'
      WHEN (dataownercode = 'QBUZZ' and substring(line.lineplanningnumber,1,1) = 'u')         THEN 'UOV'
      WHEN (dataownercode = 'SYNTUS' and description like 'TW%')           THEN 'TWENTS'
-     ELSE dataownercode END as operatorref, 
+     ELSE dataownercode END as operatorref,
 dataownercode||':'||lineplanningnumber as operator_id,
 lineplanningnumber as privatecode,
 linepublicnumber as publiccode,
