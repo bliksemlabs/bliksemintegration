@@ -79,8 +79,8 @@ c.dataownercode,c.organizationalunitcode,c.periodgroupcode,timetableversioncode,
 from c.validdate)) as daytype
 FROM 
 (SELECT 
-dataownercode,organizationalunitcode,periodgroupcode,timetableversioncode,specificdaycode,generate_series(coalesce(tv.validfrom,pv.validfrom),coalesce(tv.validthru,pv.validthru),interval 
-'1 day')::date as validdate
+dataownercode,organizationalunitcode,periodgroupcode,timetableversioncode,specificdaycode,
+generate_series(coalesce(pv.validfrom,tv.validfrom),coalesce(pv.validthru,tv.validthru),interval '1 day')::date as validdate
 FROM tive AS tv JOIN pegrval AS pv USING (dataownercode,organizationalunitcode,periodgroupcode)) as c
 LEFT JOIN excopday as ex ON (ex.dataownercode = c.dataownercode AND ex.specificdaycode = c.specificdaycode AND 
 c.validdate::date = ex.validdate::date)
