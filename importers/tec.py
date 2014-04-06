@@ -67,8 +67,6 @@ def import_subzip(zip,versionname,unitcode,remove_old=False):
         raise
 
 def download(url,filename):
-    print 'ATTEMPT '+ url
-    return
     u = urllib2.urlopen(url)
     f = open('/tmp/'+filename, 'wb')
 
