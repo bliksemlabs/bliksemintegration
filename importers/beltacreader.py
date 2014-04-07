@@ -89,7 +89,8 @@ def parse_timetables(zip,filename,validity):
             s_index += 1
             s_stationshort, s_departuretime = x[1:].split('|')
             s_stationshort = s_stationshort.strip()
-            current_record['stop'].append({'stop_id': s_stationshort, 'index': s_index, 'arrivaltime': None, 'departuretime': parse_time(s_departuretime)})
+            s_departuretime = parse_time(s_departuretime)
+            current_record['stop'].append({'stop_id': s_stationshort, 'index': s_index, 'arrivaltime': None, 'departuretime': s_departuretime})
             last_time = s_departuretime
         elif x[0] == '.':
             s_index += 1
@@ -111,12 +112,15 @@ def parse_timetables(zip,filename,validity):
             if s_departuretime < s_arrivaltime:
                 s_departuretime = add24hours(s_departuretime)
             current_record['stop'].append({'stop_id': s_stationshort, 'index': s_index, 'arrivaltime': s_arrivaltime, 'departuretime': s_departuretime})
-            last_time = parse_time(s_departuretime)
+            last_time = s_departuretime
         elif x[0] == '<':
             s_index += 1
             s_stationshort, s_arrivaltime = x[1:].split('|')
             s_stationshort = s_stationshort.strip()
-            current_record['stop'].append({'stop_id': s_stationshort, 'index': s_index, 'arrivaltime': parse_time(s_arrivaltime), 'departuretime': None})
+            s_arrivaltime = parse_time(s_arrivaltime)
+            if s_arrivaltime < last_time:
+                s_arrivaltime = add24hours(s_arrivaltime)
+            current_record['stop'].append({'stop_id': s_stationshort, 'index': s_index, 'arrivaltime': s_arrivaltime, 'departuretime': None})
     
     if current_id is not None:
         timetables[current_id] = current_record
