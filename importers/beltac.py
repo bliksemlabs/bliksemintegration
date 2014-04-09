@@ -309,7 +309,7 @@ def clusterPatternsIntoRoute(conn,getPool,prefix=None,unitcode=None):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if prefix is None:
         prefix = 'BELTAC'
-    if unitcode is None;
+    if unitcode is None:
         unitcode = ''
     cur.execute("""
 SELECT 
