@@ -484,7 +484,7 @@ def getLines(conn,prefix=None,operatorref=None,unitcode=None):
         prefix = 'BELTAC'
     if operatorref is None:
         operatorref = 'BELTAC'
-    if unitcode is None;
+    if unitcode is None:
         unitcode = ''
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
