@@ -7,7 +7,7 @@ import logging
 
 logger = logging.getLogger("importer")
 
-url_gvb = 'http://195.193.209.12/gvbpublicatieinternet/KV1/'
+url_gvb = 'http://pol.gvb.nl/gvbpublicatieinternet/KV1/'
 kv1index_gvb = url_gvb+'KV1index.xml'
 
 def getDataSource():
