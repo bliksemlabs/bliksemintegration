@@ -106,7 +106,7 @@ stoparea_id as publiccode,
 name,
 town,
 ST_Y(the_geom)::NUMERIC(9,6)::text AS latitude,
-ST_Y(the_geom)::NUMERIC(8,6)::text AS longitude,
+ST_X(the_geom)::NUMERIC(8,6)::text AS longitude,
 'Europe/Amsterdam'::text as timezone
 FROM (SELECT *,st_transform(st_setsrid(st_makepoint(lambert72_x,lambert72_y),31370),4326) as the_geom from stopareas) as stopareas
 """,[prefix]*2)
