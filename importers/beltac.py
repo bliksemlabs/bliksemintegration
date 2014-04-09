@@ -305,13 +305,15 @@ FROM journeypattern JOIN stops ON (stop_id = last_stopid)
     cur.close()
     return destinationdisplays
 
-def clusterPatternsIntoRoute(conn,getPool,prefix=None):
+def clusterPatternsIntoRoute(conn,getPool,prefix=None,unitcode=None):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if prefix is None:
         prefix = 'BELTAC'
+    if unitcode is None;
+        unitcode = ''
     cur.execute("""
 SELECT 
-concat_ws(':',%s,route_id) as route_id,array_agg(patterncode ORDER BY char_length(pattern) DESC,patterncode) as 
+concat_ws(':',%s,%s,route_id) as route_id,array_agg(patterncode ORDER BY char_length(pattern) DESC,patterncode) as 
 patterncodes,array_agg(pattern ORDER BY char_length(pattern) DESC,patterncode) as patterns
 FROM
 (SELECT route_id,%s||':'||journeypatterncode as patterncode,string_agg(stop_id,'>') as pattern 
@@ -319,7 +321,7 @@ FROM (SELECT DISTINCT ON (route_id,journeypatterncode,idx) *
       From timetable_stop JOIN journeypattern USING (trip_id)
       order by route_id,journeypatterncode,idx) as passtimes
 GROUP BY route_id,journeypatterncode) as y
-GROUP BY route_id""",[prefix]*2)
+GROUP BY route_id""",[prefix,unitcode,prefix])
     rows = cur.fetchall()
     patterncodeInRoute = {}
     for row in rows:
@@ -437,13 +439,15 @@ SELECT '1' as datasourceref,firstday as startdate, lastday as enddate, release a
 FROM version LIMIT 1;""",[versionname,prefix,versionname])
     return cur.fetchone()
 
-def getJourneys(timedemandGroupRefForJourney,conn,prefix=None):
+def getJourneys(timedemandGroupRefForJourney,conn,prefix=None,unitcode=None):
     if prefix is None:
         prefix = 'BELTAC'
+    if unitcode is None:
+        unitcode = ''
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
 SELECT DISTINCT ON (trip_id)
-concat_ws(':',%s,trip_id) as privatecode,
+concat_ws(':',%s,%s,trip_id) as privatecode,
 concat_ws(':',%s,trip_id) as operator_id,
 concat_ws(':', %s,coalesce(blocks.calendar_id,c.calendar_id)) as availabilityconditionRef,
 block_id as blockref,
@@ -466,7 +470,7 @@ FROM trips JOIN journeypattern USING (trip_id)
                                      GROUP BY trip_id) as notes USING (trip_id)
            JOIN timetable_calendar as c USING (trip_id)
            LEFT JOIN blocks USING (block_id);
-""",[prefix]*6)
+""",[prefix,unitcode,prefix,prefix,prefix,prefix,prefix])
     journeys = {}
     for row in cur.fetchall():
         row.update(timedemandGroupRefForJourney[row['operator_id']])
@@ -474,16 +478,18 @@ FROM trips JOIN journeypattern USING (trip_id)
     cur.close()
     return journeys
 
-def getLines(conn,prefix=None,operatorref=None):
+def getLines(conn,prefix=None,operatorref=None,unitcode=None):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if prefix is None:
         prefix = 'BELTAC'
     if operatorref is None:
         operatorref = 'BELTAC'
+    if unitcode is None;
+        unitcode = ''
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
 SELECT DISTINCT ON (route_id,route_service_mode)
-%s||':'||route_id as operator_id,
+%s||':'||%s||':'||route_id as operator_id,
 route_id as privatecode,
 %s as operatorref,
 routepubliccode as publiccode,
@@ -494,7 +500,7 @@ CASE WHEN (route_service_mode = 0) THEN 'BUS'
      WHEN (route_service_mode = 2) THEN 'METRO'
      WHEN (route_service_mode = 3) THEN 'TRAIN' END as transportmode
 FROM routes JOIN trips USING (route_id)
-""",[prefix,operatorref])
+""",[prefix,unitcode,operatorref])
     lines = {}
     for row in cur.fetchall():
         if row['operator_id'] in lines:
