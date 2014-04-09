@@ -119,12 +119,12 @@ def getAvailabilityConditions(conn,prefix=None,unitcode=None):
     if prefix is None:
         prefix = 'BELTAC'
     if unitcode is None:
-        prefix = 1
+        unitcode = ''
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     availabilityconditions = {}
     cur.execute("""
 SELECT 
-%s||':'||calendar_id as operator_id,
+%s||':'||%s||':'||calendar_id as operator_id,
 CONCAT (
    CASE WHEN (monday    > total / 10) THEN 1 ELSE NULL END,
    CASE WHEN (tuesday   > total / 10) THEN 2 ELSE NULL END,
@@ -157,7 +157,7 @@ min(servicedate)::text as fromdate,
 max(servicedate)::text as todate
 FROM calendar
 GROUP BY calendar_id) as x;
-""",[prefix,unitcode])
+""",[prefix,unitcode,unitcode])
     for row in cur.fetchall():
         signature = ''
         seen = set()
