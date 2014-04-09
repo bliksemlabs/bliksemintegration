@@ -448,7 +448,7 @@ def getJourneys(timedemandGroupRefForJourney,conn,prefix=None,unitcode=None):
     cur.execute("""
 SELECT DISTINCT ON (trip_id)
 concat_ws(':',%s,%s,trip_id) as privatecode,
-concat_ws(':',%s,trip_id) as operator_id,
+concat_ws(':',%s,%s,trip_id) as operator_id,
 concat_ws(':', %s,coalesce(blocks.calendar_id,c.calendar_id)) as availabilityconditionRef,
 block_id as blockref,
 concat_ws(':',%s,journeypatterncode) as journeypatternref,
@@ -470,7 +470,7 @@ FROM trips JOIN journeypattern USING (trip_id)
                                      GROUP BY trip_id) as notes USING (trip_id)
            JOIN timetable_calendar as c USING (trip_id)
            LEFT JOIN blocks USING (block_id);
-""",[prefix,unitcode,prefix,prefix,prefix,prefix,prefix])
+""",[prefix,unitcode,prefix,unitcode,prefix,prefix,prefix,prefix])
     journeys = {}
     for row in cur.fetchall():
         row.update(timedemandGroupRefForJourney[row['operator_id']])
