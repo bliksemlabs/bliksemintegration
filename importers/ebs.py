@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
 import logging 
+from settings.const import *
 
 logger = logging.getLogger("importer")
 
