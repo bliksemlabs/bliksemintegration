@@ -116,7 +116,7 @@ CASE WHEN (dataownercode = 'CXX' and lineplanningnumber in ('N419','Z050','Z060'
      ELSE null END
      as bicycleallowed,
 productformulatype in (2,8,35,36) as onDemand,
-(dataownerisoperator = false and lineplanningnumber not in ('X058')) as isvirtual
+((dataownerisoperator = false and lineplanningnumber not in ('X058')) OR transporttype = 'TRAIN') as isvirtual
 FROM pujo LEFT JOIN (SELECT DISTINCT ON (dataownercode,lineplanningnumber,journeypatterncode)
                                              dataownercode,lineplanningnumber,journeypatterncode,productformulatype FROM jopatili
                                              ORDER BY dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder) as pattern

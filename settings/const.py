@@ -4,7 +4,8 @@ import urllib2
 database_connect = "dbname='ridprod'"
 kv1_database_connect = "dbname='kv1tmp'"
 iff_database_connect = "dbname='ifftmp'"
-pool_generation_enabled = False
+pool_generation_enabled = True
+import_arriva_trains = True
 
 #NDOVLoket settings
 ndovloket_url = "data.ndovloket.nl"

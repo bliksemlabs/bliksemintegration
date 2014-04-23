@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
 import logging
+from settings.const import *
 
 logger = logging.getLogger("importer")
 
@@ -53,7 +54,7 @@ lineplanningnumber like '12___' or lineplanningnumber like '14___'
 
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
-    if containsTrain(conn):
+    if not import_arriva_trains and containsTrain(conn):
         data = {}
         data['DATASOURCE'] = getDataSource()
         data['VERSION'] = {}
