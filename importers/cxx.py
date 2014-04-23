@@ -123,8 +123,11 @@ journey.operator_id = newjourney.operator_id AND
         availabilityConditionrefs = []
     print str(len(availabilityConditionrefs)) + ' calendars dirty'
     cur.execute("""
-UPDATE availabilityconditionday SET isavailable = false WHERE availabilityConditionref = any(%s) AND validdate < %s;
-""",[availabilityConditionrefs,data['_validfrom']])
+UPDATE availabilityconditionday SET isavailable = false
+WHERE availabilityConditionref != any(%s) AND validdate < %s AND availabilityconditionref in (SELECT id FROM availabilitycondition 
+                                                                                              WHERE versionref = %s)
+;
+""",[availabilityConditionrefs,data['_validfrom'],data['VERSION']['1']])
     cur.execute("CREATE INDEX ON newjourney(operator_id)")
     cur.execute("""
 SELECT journey.operator_id,journey.id,newjourney.id as tmp_id
@@ -133,7 +136,6 @@ journey JOIN availabilitycondition as oac ON (oac.id = journey.availabilitycondi
 ,newjourney JOIN availabilitycondition as nac ON (nac.id = newjourney.availabilityconditionref)
 WHERE 
 journey.operator_id = newjourney.operator_id AND
-oac.operator_id = nac.operator_id AND
 (%s = 0 or newjourney.availabilityconditionref != any(%s))
 """,[len(availabilityConditionrefs),availabilityConditionrefs])
     count = 0
