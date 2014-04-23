@@ -5,6 +5,7 @@ import importers.htm
 import importers.htmbuzz
 import importers.syntus
 import importers.arr
+import importers.tec
 import logging
 import sys
 
@@ -25,5 +26,6 @@ def sync():
     importers.htmbuzz.sync()
     importers.syntus.sync()
     importers.vtn.sync()
+    importers.tec.sync()
 if __name__ == '__main__':
     sync()
