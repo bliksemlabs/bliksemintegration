@@ -204,7 +204,8 @@ istimingstop as iswaitpoint,
 0 as waittime,
 NULL as requeststop,
 getout as foralighting,
-CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false 
+CASE WHEN (lower(destnamefull) = 'niet instappen') THEN false
+     when (destnamefull ilike '%alleen uitstappen%') THEN false 
      ELSE getin END as forboarding,
 0 as distancefromstartroute,
 coalesce(sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,journeypatterncode
