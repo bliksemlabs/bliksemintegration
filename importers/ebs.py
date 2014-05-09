@@ -2,6 +2,7 @@ from kv1_811 import *
 from inserter import insert,version_imported
 from bs4 import BeautifulSoup
 import urllib2
+from settings.const import *
 from datetime import datetime,timedelta
 import logging
 
