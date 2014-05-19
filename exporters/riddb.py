@@ -162,12 +162,12 @@ SELECT DISTINCT ON (from_stop_id,to_stop_id)
 from_stop_id,to_stop_id,9,distance
 FROM
 ((SELECT from_stop_id::text,to_stop_id::text,9,distance 
-FROM transfers
+FROM generated_transfers
 WHERE from_stop_id = %s AND distance < %s
 ORDER BY from_stop_id,to_stop_id
 )UNION(
 SELECT to_stop_id::text as from_stop_id,from_stop_id::text as to_stop_id,9,distance
-FROM transfers
+FROM generated_transfers
 WHERE to_stop_id = %s AND distance < %s
 ORDER BY from_stop_id,to_stop_id)) as x
 ORDER BY from_stop_id,to_stop_id) as y
@@ -380,9 +380,12 @@ FROM servicejourney as j JOIN servicecalendar as c USING (availabilityconditionr
                   JOIN route as r ON (routeref = r.id)
                   JOIN line as l ON (lineref = l.id)
                   JOIN destinationdisplay as d ON (jp.destinationdisplayref = d.id)
+                  JOIN availabilitycondition as ac ON (ac.id = availabilityconditionref)
+                  JOIN version as v ON (v.id = versionref)
+                  JOIN datasource as da ON (da.id = datasourceref)
                   LEFT JOIN productcategory as p ON (productcategoryref = p.id)
 WHERE
-tpt.totaldrivetime is not null
+tpt.totaldrivetime is not null AND da.operator_id not in ('TEC')
 ORDER BY j.id,pointorder
 """)
         timedemandgroup_id_for_signature = {} # map from timedemandgroup signatures to IDs
