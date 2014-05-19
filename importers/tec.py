@@ -51,10 +51,10 @@ def import_subzip(zip,versionname,unitcode,remove_old=False):
         data['LINE'] = getLines(conn,prefix='TEC',operatorref='TEC',unitcode=unitcode[3:])
         data['STOPPOINT'] = getStopPoints(conn,prefix='TEC')
         data['STOPAREA'] = getStopAreas(conn,prefix='TEC')
-        data['AVAILABILITYCONDITION'] = getAvailabilityConditions(conn,prefix='TEC',unitcode=unitcode)
+        data['AVAILABILITYCONDITION'] = getAvailabilityConditions(conn,prefix='TEC',unitcode=unitcode[3:])
         data['PRODUCTCATEGORY'] = getProductCategories(conn)
         data['ADMINISTRATIVEZONE'] = {}
-        timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroups(conn,prefix='TEC')
+        timedemandGroupRefForJourney,data['TIMEDEMANDGROUP'] = calculateTimeDemandGroups(conn,prefix='TEC',unitcode=unitcode[3:])
         routeRefForPattern,data['ROUTE'] = clusterPatternsIntoRoute(conn,getFakePool,prefix='TEC',unitcode=unitcode[3:])
         data['JOURNEYPATTERN'] = getJourneyPatterns(routeRefForPattern,conn,data['ROUTE'],prefix='TEC')
         data['JOURNEY'] = getJourneys(timedemandGroupRefForJourney,conn,prefix='TEC',unitcode=unitcode[3:])
