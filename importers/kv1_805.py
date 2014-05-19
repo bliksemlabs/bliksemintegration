@@ -390,7 +390,7 @@ def getBISONproductcategories():
             '38' : {'operator_id' : '38','privatecode' : 38,'name' : 'Parkshuttle', 'shortname' : None},
             '39' : {'operator_id' : '39','privatecode' : 39,'name' : 'FC-Utrecht Express', 'shortname' : None},
             '40' : {'operator_id' : '40','privatecode' : 40,'name' : 'P+R Citybus', 'shortname' : None},
-            '41' : {'operator_id' : '41','privatecode' : 41,'name' : 'Qlink', 'shortname' : None},
+            '41' : {'operator_id' : '41','privatecode' : 41,'name' : 'Q-link', 'shortname' : None},
             '42' : {'operator_id' : '42','privatecode' : 42,'name' : 'Scholierenlijn', 'shortname' : None},
             '43' : {'operator_id' : '43','privatecode' : 43,'name' : 'Stadsbus', 'shortname' : None},
             '44' : {'operator_id' : '44','privatecode' : 44,'name' : 'Streekbus', 'shortname' : None},
