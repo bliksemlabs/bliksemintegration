@@ -33,18 +33,22 @@ ORDER BY pointorder
 """,[stopbegin,stopbegin,stopend])
     return cur.fetchall()
 
-def calculateTimeDemandGroups(conn,prefix=None):
+def calculateTimeDemandGroups(conn,prefix=None,unitcode=None):
+    if prefix is None:
+        prefix = 'BELTAC'
+    if unitcode is None:
+        unitcode = ''
     cur = conn.cursor('timdemgrps',cursor_factory=psycopg2.extras.RealDictCursor)
     timdemgroup_ids = {}
     timdemgroups = {}
     journeyinfo = {}
     cur.execute("""
-SELECT concat_ws(':',%s,trip_id) as JOURNEY_id, 
+SELECT concat_ws(':',%s,%s,trip_id) as JOURNEY_id, 
 array_agg(cast(idx as integer) order by idx) as stoporders,array_agg(toseconds(coalesce(arrivaltime,departuretime),0) order by idx) as 
 arrivaltimes,array_agg(toseconds(coalesce(departuretime,arrivaltime),0) order by idx) as departuretimes
 FROM timetable_stop
 GROUP BY JOURNEY_id
-""",[prefix])
+""",[prefix,unitcode])
     for row in cur:
         points = [(row['stoporders'][0],0,0)]
         dep_time = row['departuretimes'][0]
@@ -178,14 +182,14 @@ GROUP BY calendar_id) as x;
         availabilityconditions[row['operator_id']] = row
     cur.execute("""
 SELECT 
-%s||':'||calendar_id as availabilityconditionRef,
+%s||':'||%s||':'||calendar_id as availabilityconditionRef,
 array_agg(servicedate::text) as validdates,
 true as isavailable
 FROM calendar
 GROUP BY calendar_id
 ORDER BY calendar_id
 ;
-""",[prefix])
+""",[prefix,unitcode])
     for row in cur.fetchall():
         availabilityconditions[row['availabilityconditionref']]['DAYS'] = row
     cur.close()
@@ -449,7 +453,7 @@ def getJourneys(timedemandGroupRefForJourney,conn,prefix=None,unitcode=None):
 SELECT DISTINCT ON (trip_id)
 concat_ws(':',%s,%s,trip_id) as privatecode,
 concat_ws(':',%s,%s,trip_id) as operator_id,
-concat_ws(':', %s,coalesce(blocks.calendar_id,c.calendar_id)) as availabilityconditionRef,
+concat_ws(':', %s,%s,coalesce(blocks.calendar_id,c.calendar_id)) as availabilityconditionRef,
 block_id as blockref,
 concat_ws(':',%s,journeypatterncode) as journeypatternref,
 NULL as timedemandgroupref,
@@ -470,7 +474,7 @@ FROM trips JOIN journeypattern USING (trip_id)
                                      GROUP BY trip_id) as notes USING (trip_id)
            JOIN timetable_calendar as c USING (trip_id)
            LEFT JOIN blocks USING (block_id);
-""",[prefix,unitcode,prefix,unitcode,prefix,prefix,prefix,prefix])
+""",[prefix,unitcode,prefix,unitcode,prefix,unitcode,prefix,prefix,prefix])
     journeys = {}
     for row in cur.fetchall():
         row.update(timedemandGroupRefForJourney[row['operator_id']])
