@@ -61,6 +61,78 @@ def getOperator():
                                'language'    : 'nl'}
            }
 
+def reconstruct_excopday(conn):
+    cur = conn.cursor()
+    cur.execute("""
+--2013
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2013-12-25 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2013-12-25 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2013-12-26 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2013-12-26 04:00:00');
+
+--2014
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2014-01-01 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2014-01-01 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2014-04-21 04:00:00','7','NORMAL',NULL,NULL
+        WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2014-04-21 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2014-05-29 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2014-05-29 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2014-06-09 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2014-06-09 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2014-12-25 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2014-12-25 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2014-12-26 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2014-12-26 04:00:00');
+
+--2015
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-01-01 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-01-01 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-04-06 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-04-06 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-04-27 04:00:00','0000060','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-04-27 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-05-05 04:00:00','0000060','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-05-05 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-05-14 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-05-14 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-05-25 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-05-25 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-12-25 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-12-25 04:00:00');
+
+INSERT INTO EXCOPDAY
+SELECT 'EXCOPDAY',1,'I','CXX','CXX','2015-12-26 04:00:00','7','NORMAL',NULL,NULL
+	WHERE NOT EXISTS (SELECT 1 FROM excopday where validdate = '2015-12-26 04:00:00');""")
+
 def recycle_journeyids(conn,data):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
@@ -124,7 +196,7 @@ journey.operator_id = newjourney.operator_id AND
     print str(len(availabilityConditionrefs)) + ' calendars dirty'
     cur.execute("""
 UPDATE availabilityconditionday SET isavailable = false
-WHERE availabilityConditionref != any(%s) AND validdate < %s AND availabilityconditionref in (SELECT id FROM availabilitycondition 
+WHERE availabilityConditionref = any(%s) AND validdate < %s AND availabilityconditionref in (SELECT id FROM availabilitycondition 
                                                                                               WHERE versionref = %s)
 ;
 """,[availabilityConditionrefs,data['_validfrom'],data['VERSION']['1']])
@@ -153,6 +225,7 @@ def import_zip(path,filename,version):
     cur = conn.cursor()
     cur.execute("""create index on pool(userstopcodebegin,userstopcodeend);""")
     cur.close()
+    reconstruct_excopday(conn)
     try:
         data = {}
         data['_validfrom'] = version['validfrom']
