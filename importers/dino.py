@@ -46,7 +46,7 @@ false as monitored
 FROM
 rec_lin_ber LEFT JOIN rec_trip USING (version,line_nr)
             LEFT JOIN set_vehicle_type USING (version,veh_type_nr)
-ORDER BY line_nr,transportmode
+ORDER BY operator_id,transportmode
 """)
     for row in cur.fetchall():
         lines[row['operator_id']] = row
