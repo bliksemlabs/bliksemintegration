@@ -30,7 +30,7 @@ def getLines(conn,prefix=None):
         prefix = 'DINO'
     lines = {}
     cur.execute("""
-SELECT DISTINCT ON (line_nr,transportmode)
+SELECT DISTINCT ON (operator_id,transportmode)
 rec_lin_ber.branch_nr as operatorref,
 'AVV'||':'||version||':'||line_nr as operator_id,
 line_nr as privatecode,
