@@ -247,8 +247,8 @@ def parse_calendar(zip,filename,validity):
         if x[0] == '#':
             current_id = int(x[1:])
             continue
-        else:
-            calendar[current_id] = [y == '1' for y in x]
+        elif x[0] == '-':
+            calendar[current_id] = [y == '1' for y in x[1:]]
     return calendar
 
 def sql_calendar(conn,delivery, data):
