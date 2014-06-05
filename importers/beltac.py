@@ -453,7 +453,7 @@ def getJourneys(timedemandGroupRefForJourney,conn,prefix=None,unitcode=None):
 SELECT DISTINCT ON (trip_id)
 concat_ws(':',%s,%s,trip_id) as privatecode,
 concat_ws(':',%s,%s,trip_id) as operator_id,
-concat_ws(':', %s,%s,coalesce(blocks.calendar_id,c.calendar_id)) as availabilityconditionRef,
+concat_ws(':', %s,%s,coalesce(c.calendar_id,blocks.calendar_id)) as availabilityconditionRef,
 block_id as blockref,
 concat_ws(':',%s,journeypatterncode) as journeypatternref,
 NULL as timedemandgroupref,
