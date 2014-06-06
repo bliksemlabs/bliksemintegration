@@ -30,6 +30,13 @@ def getOperator():
                                'phone'       : '0800-0232545',
                                'url'         : 'http://www.waterbus.nl',
                                'timezone'    : 'Europe/Amsterdam',
+                               'language'    : 'nl'},
+              'AQUALINER' :   {'privatecode' : 'AQUALINER',
+                               'operator_id' : 'AQUALINER',
+                               'name'        : 'Aqualiner',
+                               'phone'       : '0800-0232545',
+                               'url'         : 'http://www.aqualiner.nl',
+                               'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}
            }
 

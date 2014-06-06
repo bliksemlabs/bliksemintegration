@@ -390,6 +390,8 @@ def getLines(conn):
     cur.execute("""
 SELECT
 CASE WHEN (dataownercode = 'ARR' and lineplanningnumber like '15___') THEN 'WATERBUS'
+     WHEN (dataownercode = 'ARR' and lineplanningnumber in ('18019')) THEN 'WATERBUS'
+     WHEN (dataownercode = 'ARR' and lineplanningnumber in ('18017','18018')) THEN 'AQUALINER'
      WHEN (dataownercode = 'HTM' and transporttype = 'BUS' and cast(lineplanningnumber as integer) <= 42) THEN 'HTMBUZZ'
      WHEN (dataownercode = 'CXX' and lineplanningnumber in ('X058'))                         THEN 'NIAG'
      WHEN (dataownercode = 'CXX' and substring(line.lineplanningnumber,1,1) = 'U')           THEN 'GVU'
