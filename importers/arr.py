@@ -45,6 +45,9 @@ def setLineColors():
     cur = conn.cursor()
     cur.execute("""
 UPDATE line set color_shield = '004990', color_text= 'ffffff' WHERE operator_id = 'ARR:15020';
+UPDATE line set color_shield = 'ff0119', color_text= 'ffffff' WHERE operator_id = 'ARR:18017';
+UPDATE line set color_shield = 'a474fe', color_text= 'ffffff' WHERE operator_id = 'ARR:18018';
+UPDATE line set color_shield = '0fa30f', color_text= 'ffffff' WHERE operator_id = 'ARR:18019';
 UPDATE line set color_shield = '659ad2', color_text= '000000' WHERE operator_id = 'ARR:15021';
 UPDATE line set color_shield = 'fcaf17', color_text= '000000' WHERE operator_id = 'ARR:15022';
 UPDATE line set color_shield = '5dbc56', color_text= '000000' WHERE operator_id = 'ARR:15023';
