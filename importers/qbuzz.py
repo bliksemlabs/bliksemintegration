@@ -84,8 +84,9 @@ update line set color_text = '000000' where operator_id = 'QBUZZ:g517';
 def import_zip(path,filename,version):
     meta,conn = load(path,filename,point_from_pool=True)
     try:
-        if pool_generation_enabled:
-            cur = conn.cursor()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM link WHERE transporttype = 'TRAM'")
+        if pool_generation_enabled and cur.fetchone()[0] > 0:
             cur.execute("""
 UPDATE pool_utram set linkvalidfrom = (SELECT DISTINCT validfrom FROM LINK where transporttype = 'TRAM');
 update point set locationx_ew = '135335', locationy_ns = '451223' where locationx_ew = '135639' and locationy_ns = '451663';
