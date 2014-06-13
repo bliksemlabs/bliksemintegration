@@ -251,6 +251,7 @@ ORDER BY operator_id,pointorder
         m = md5.new()
         m.update(str(row['POINTS']))
         row['operator_id'] = m.hexdigest()
+        row['privatecode'] = row['operator_id']
     return timedemandgroups
 
 def getJourneyPatterns(conn,routes,prefix=None):
@@ -332,7 +333,7 @@ def getJourneys(conn,prefix=None):
     cur.execute("""
 SELECT
 concat_ws(':',%s,version,line_nr,trip_id) as privatecode,
-concat_ws(':',%s,version,trip_id) as operator_id,
+concat_ws(':',%s,version,trip_id,row_number() OVER (PARTITION BY version,trip_id ORDER BY trip_id)) as operator_id,
 concat_ws(':',%s,version,day_attribute_nr,restriction) as availabilityconditionRef,
 concat_ws(':',%s,version,line_nr,line_dir_nr,str_line_var,dep_stop_nr,arr_stop_nr,notice) as journeypatternref,
 concat_ws(':',%s,version,line_nr,line_dir_nr,str_line_var,line_dir_nr,timing_group_nr) as timedemandgroupref,
