@@ -138,16 +138,25 @@ def getAvailabilityConditions(conn,prefix=None):
         prefix = 'DINO'
     availabilityConditions = {}
     cur.execute("""
-SELECT 
-%s||':'||version||':'||restriction as operator_id,
-%s||':'||version||':'||restriction as privatecode,
+SELECT
+concat_ws(':',%s,version,day_attribute_nr,restriction) as operator_id,
+concat_ws(':',%s,version,day_attribute_nr,restriction) as privatecode,
 %s as unitcode,
 %s||':'||version as versionref,
-concat_ws(' ',restrict_text_1,restrict_text_2,restrict_text_3) as name,
-cast(date_from as text) as fromdate,
-cast(date_until as text) as todate,
-bitcalendar(date_from,('x' || restriction_days) :: bit varying(1024))::text[] as days
-FROM service_restriction;
+NULL::text as name,
+min(day) as fromdate,
+max(day) as todate,
+array_agg(DISTINCT day) as days
+FROM 
+(SELECT DISTINCT 
+ version,restriction,day_attribute_nr FROM rec_trip) as trips
+         JOIN set_day_attribute USING (version,day_attribute_nr)
+         JOIN day_type_2_day_attribute USING (version,day_attribute_nr)
+         JOIN calendar_of_the_company as cotc USING (version,day_type_nr)
+         LEFT JOIN (SELECT version,restriction,unnest(bitcalendar(date_from,('x' || restriction_days) :: bit varying(1024)))::date as day
+               FROM service_restriction) as restricted USING (version,restriction,day)
+WHERE restricted.day is not null
+GROUP BY operator_id,privatecode,unitcode,versionref,name;
 """,[prefix]*4)
     for row in cur.fetchall():
         row['DAYS'] = {'validdates' : row['days'], 'isavailable' : True, 'availabilityconditionref' : row['operator_id']}
@@ -324,7 +333,7 @@ def getJourneys(conn,prefix=None):
 SELECT
 concat_ws(':',%s,version,line_nr,trip_id) as privatecode,
 concat_ws(':',%s,version,trip_id) as operator_id,
-concat_ws(':',%s,version,restriction) as availabilityconditionRef,
+concat_ws(':',%s,version,day_attribute_nr,restriction) as availabilityconditionRef,
 concat_ws(':',%s,version,line_nr,line_dir_nr,str_line_var,dep_stop_nr,arr_stop_nr,notice) as journeypatternref,
 concat_ws(':',%s,version,line_nr,line_dir_nr,str_line_var,line_dir_nr,timing_group_nr) as timedemandgroupref,
 concat_ws(':',%s,version,str_veh_type) as productCategoryRef,
