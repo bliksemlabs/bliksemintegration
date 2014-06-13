@@ -1,4 +1,3 @@
-
 drop table if exists navitia.parameters;
 create table navitia.parameters as (
 SELECT
@@ -8,7 +7,10 @@ SELECT
 
 COPY (SELECT * FROM navitia.parameters) to '/tmp/navitia.parameters';
 
-create temporary table servicejourney_compressed as (
+drop table if exists servicejourney_compressed;
+create 
+--temporary 
+table servicejourney_compressed as (
 SELECT unnest(array_agg(id)) as id,row_number() OVER () as compressed_id
 FROM (
 SELECT
@@ -16,8 +18,7 @@ servicejourney.id,
 departuretime,
 servicejourney.privatecode,
 journey_dest.name as journey_headsign,
-CASE WHEN (blockref in (select blockref from journey where blockref like 'IFF:%' GROUP by blockref having count(*) > 1)) THEN blockref 
-     ELSE NULL END as block_id,
+block_id,
 array_agg(pjp.pointorder ORDER BY pointorder) as pointorders,
 array_agg(pjp.pointref ORDER BY pointorder) as stoppoints,
 array_agg(totaldrivetime ORDER BY pointorder) as drivetime,
@@ -26,7 +27,8 @@ array_agg(forboarding ORDER BY pointorder) as forboarding,
 array_agg(foralighting ORDER BY pointorder) as foralighting,
 array_agg(stop_dest.name ORDER BY pointorder) as stop_headsigns,
 array_agg(DISTINCT t.operator_id ORDER BY t.operator_id) journeytransfers
-FROM (SELECT id,departuretime,journeypatternref,timedemandgroupref,blockref,
+FROM (SELECT id,departuretime,journeypatternref,timedemandgroupref,
+             CASE WHEN (split_part(blockref,':',1) IN ('IFF','TEC')) THEN blockref ELSE NULL END as block_id,
              CASE WHEN (split_part(privatecode,':',1) in ('AVV','TEC')) THEN NULL ELSE privatecode END as privatecode
              FROM servicejourney) as servicejourney
                    JOIN pointinjourneypattern as pjp USING (journeypatternref)
@@ -53,8 +55,7 @@ WHERE d.operator_id not in ('TEC')
 
 create index on compressed_calendar(compressed_id,validdate);
 
-drop table if exists servicecalendar;
-create table servicecalendar as (
+create temporary table servicecalendar as (
 SELECT unnest(array_agg(compressed_id)) as compressed_id,lpad(reverse(validitypattern_section),366,'0') as validitypattern,row_number() OVER ()-1 as 
 service_id
 FROM (
@@ -83,7 +84,9 @@ FROM servicecalendar
 COPY (SELECT * FROM navitia.validity_pattern) to '/tmp/navitia.validity_pattern';
 
 drop table if exists navitia_timetable;
-create table navitia_timetable as (
+create 
+--temporary 
+table navitia_timetable as (
 SELECT
 j.id,
 j.departuretime+tpt.totaldrivetime as arrival_time,
@@ -101,7 +104,8 @@ ondemand as ondemand,
 pointorder,
 compressed_id,
 iswaitpoint,
-row_number() OVER (PARTITION BY j.id ORDER BY pointorder)-1 as stopidx
+row_number() OVER (PARTITION BY j.id ORDER BY pointorder)-1 as stopidx,
+blockref
 FROM (SELECT DISTINCT ON (compressed_id) compressed_id,id FROM servicejourney_compressed ORDER BY compressed_id,id) as jc
                   JOIN servicejourney as j USING (id)
                   JOIN servicecalendar as c USING (compressed_id)
@@ -117,6 +121,74 @@ FROM (SELECT DISTINCT ON (compressed_id) compressed_id,id FROM servicejourney_co
 WHERE
 tpt.totaldrivetime is not null
 ORDER BY j.id,pointorder);
+
+--Clear empty blocks
+UPDATE navitia_timetable nt
+SET blockref = null
+FROM ( SELECT blockref
+       FROM navitia_timetable
+       WHERE blockref IS NOT NULL
+       GROUP BY blockref HAVING COUNT(DISTINCT compressed_id) <= 1) as empty_blocks
+WHERE empty_blocks.blockref = nt.blockref;
+
+--incoherent blocks
+UPDATE navitia_timetable nt
+SET blockref = null
+FROM ( SELECT DISTINCT x.blockref FROM (
+         SELECT *,row_number() OVER (PARTITION BY blockref ORDER BY start_time) as block_idx
+             FROM (SELECT id,blockref,min(departure_time) as start_time,max(arrival_time) as end_time
+               FROM navitia_timetable
+               WHERE blockref is not null
+               GROUP BY blockref,id) as s1) as x JOIN (
+         SELECT *,row_number() OVER (PARTITION BY blockref ORDER BY start_time) as block_idx
+             FROM (SELECT id,blockref,min(departure_time) as start_time,max(arrival_time) as end_time
+               FROM navitia_timetable
+               WHERE blockref is not null
+               GROUP BY blockref,id) as s1) as y ON (x.blockref = y.blockref AND x.block_idx < y.block_idx)
+WHERE x.end_time > y.start_time) as incoherent_blocks
+WHERE incoherent_blocks.blockref = nt.blockref;
+
+--Remove GVB blocks 
+UPDATE navitia_timetable nt
+SET blockref = null
+FROM (SELECT DISTINCT id FROM journey WHERE privatecode like 'GVB:%') as j
+WHERE nt.id = j.id;
+
+drop table if exists navitia_blocktransfers;
+create 
+--temporary
+table navitia_blocktransfers as (
+SELECT from_id,from_compressed_id,to_id,to_compressed_id,bt.blockref
+FROM ( SELECT 
+       x.blockref,
+       x.id as from_id,
+       x.compressed_id as from_compressed_id,
+       y.id as to_id,
+       y.compressed_id as to_compressed_id,
+       x.end_time as arrival_time,
+       y.start_time as departure_time
+       FROM (
+         SELECT *,row_number() OVER (PARTITION BY blockref ORDER BY start_time) as block_idx
+             FROM (SELECT id,blockref,compressed_id,min(departure_time) as start_time,max(arrival_time) as end_time
+               FROM navitia_timetable
+               WHERE blockref is not null
+               GROUP BY blockref,compressed_id,id) as s1) as x JOIN (
+         SELECT *,row_number() OVER (PARTITION BY blockref ORDER BY start_time) as block_idx
+             FROM (SELECT id,blockref,compressed_id,min(departure_time) as start_time,max(arrival_time) as end_time
+               FROM navitia_timetable
+               WHERE blockref is not null
+               GROUP BY blockref,compressed_id,id) as s1) as y ON (x.blockref = y.blockref AND x.block_idx = y.block_idx-1)) as bt
+     JOIN journey as fj ON (from_id = fj.id)
+     JOIN journeypattern as fjp ON (fj.journeypatternref = fjp.id)
+     JOIN route as fjr ON (fjp.routeref = fjr.id)
+     JOIN line as fjl ON (fjr.lineref = fjl.id)
+     JOIN journey as tj ON (to_id = tj.id)
+     JOIN journeypattern as tjp ON (tj.journeypatternref = tjp.id)
+     JOIN route as tjr ON (tjp.routeref = tjr.id)
+     JOIN line as tjl ON (tjr.lineref = tjl.id)
+WHERE
+bt.blockref like 'IFF:%' OR 
+((departure_time - arrival_time) between 0 and 10*60));
 
 --company
 drop table if exists navitia.company;
@@ -213,18 +285,27 @@ FROM navitia.commercial_mode) to '/tmp/navitia.commercial_mode';
 
 DROP TABLE IF EXISTS navitia.physical_mode;
 CREATE TABLE navitia.physical_mode as(
+SELECT * FROM(
 SELECT
 gtfs_route_type as id,
 concat_ws(':','physical_mode',transportmode) as uri,
 name
 FROM transportmode
+UNION
+SELECT
+gtfs_route_type+(SELECT COUNT(*) FROM transportmode) as id,
+concat_ws(':','physical_mode','TRAIN'||transportmode) as uri,
+'Treinvervangende '||name
+FROM transportmode
+WHERE transportmode != 'TRAIN') as x
+ORDER by id desc
 );
 
 COPY (SELECT * FROM navitia.physical_mode) to '/tmp/navitia.physical_mode';
 
 --In RID/KV1 commercial_mode / productcategory is set per Journey, in Kraken on linelevel 
 drop table if exists navitia_lines;
-create table navitia_lines as (
+create temporary table navitia_lines as (
 SELECT 
 unnest(journey_ids) as journey_id,
 commercial_mode_id,
@@ -244,7 +325,7 @@ GROUP BY lineref,commercial_mode_id
 );
 
 drop table if exists navitia_patterns;
-CREATE TABLE navitia_patterns AS (
+CREATE temporary TABLE navitia_patterns AS (
 SELECT unnest(array_agg(id)) as journey_id,count(*) OVER (ORDER BY lineref,trip_headsign,stop_ids)-1 as journeypattern_id,trip_headsign,lineref
 FROM 
 (SELECT
@@ -310,14 +391,16 @@ create table navitia.journey_pattern as (
 SELECT DISTINCT ON (journeypattern_id)
 journeypattern_id as id,
 journeypattern_id as route_id,
-gtfs_route_type as physical_mode_id,
+CASE WHEN (o.operator_id LIKE 'IFF:%' AND transportmode != 'TRAIN') THEN gtfs_route_type+(SELECT COUNT(*) FROM transportmode)
+     ELSE gtfs_route_type END as physical_mode_id,
 NULL::TEXT as comment,
 concat_ws(':','journey_pattern',journeypattern_id) as uri,
 trip_headsign as name,
 false as is_frequence
 FROM navitia_patterns JOIN navitia_lines as nl USING (journey_id)
                       JOIN line as l ON (l.id = orig_lineref) 
-                      JOIN navitia.line as navitial ON (nl.lineref = rid_id) 
+                      JOIN navitia.line as navitial ON (nl.lineref = rid_id)
+                      JOIN operator as o ON (o.id = operatorref) 
                       JOIN transportmode as t USING (transportmode)
 );
 
@@ -497,7 +580,7 @@ COPY (SELECT * FROM navitia.vehicle_properties) to '/tmp/navitia.vehicle_propert
 drop table if exists navitia.vehicle_journey;
 create table navitia.vehicle_journey as (
 SELECT
-row_number() OVER (ORDER BY j.id)-1 as id,
+compressed_id as id,
 service_id as adapted_validity_pattern_id,
 service_id as validity_pattern_id,
 nc.id as company_id,
@@ -513,6 +596,8 @@ CASE WHEN ((coalesce(hasliftorramp,false) or coalesce(lowfloor,false)) and not c
      WHEN ((coalesce(hasliftorramp,false) or coalesce(lowfloor,false)) and coalesce(bicycleallowed,false)) THEN 3
      ELSE 0 END as vehicle_properties_id,
 NULL::bigint as theoric_vehicle_journey_id,
+block_p.from_compressed_id as previous_vehicle_journey_id,
+block_n.to_compressed_id as next_vehicle_journey_id,
 journey.id as rid_id
 FROM (SELECT DISTINCT ON (id) * FROM navitia_timetable) as j JOIN journey USING (id)
                                                     JOIN navitia_patterns as np ON (journey_id = journey.id)
@@ -521,7 +606,18 @@ FROM (SELECT DISTINCT ON (id) * FROM navitia_timetable) as j JOIN journey USING 
                                                     JOIN destinationdisplay as d ON (d.id = destinationdisplayref)
                                                     JOIN route as r ON (r.id = routeref)
                                                     JOIN line as l ON (l.id = r.lineref)
+                                                    LEFT JOIN navitia_blocktransfers as block_p ON (block_p.to_compressed_id = compressed_id)
+                                                    LEFT JOIN navitia_blocktransfers as block_n ON (block_n.from_compressed_id = compressed_id)
                                                     JOIN navitia.company as nc ON (nc.rid_id = operatorref));
+
+UPDATE navitia.vehicle_journey SET previous_vehicle_journey_id = null WHERE previous_vehicle_journey_id not in (SELECT ID FROM navitia.vehicle_journey);
+UPDATE navitia.vehicle_journey SET next_vehicle_journey_id = null WHERE next_vehicle_journey_id not in (SELECT ID FROM navitia.vehicle_journey);
+
+SELECT count(*),'INVALID BLOCKTRANSFERS' FROM navitia.vehicle_journey j1 JOIN navitia.vehicle_journey j2 ON (j2.id = j1.next_vehicle_journey_id)
+WHERE j2.previous_vehicle_journey_id != j1.id;
+
+SELECT COUNT(*),'INVALID BLOCKTRANSFERS' FROM navitia.vehicle_journey j1 JOIN navitia.vehicle_journey j2 ON (j1.id = j2.previous_vehicle_journey_id)
+WHERE j1.next_vehicle_journey_id != j2.id;
 
 COPY (
 SELECT
@@ -537,7 +633,9 @@ odt_message,
 name,
 odt_type_id,
 vehicle_properties_id,
-theoric_vehicle_journey_id
+theoric_vehicle_journey_id,
+previous_vehicle_journey_id,
+next_vehicle_journey_id
 FROM navitia.vehicle_journey) to '/tmp/navitia.vehicle_journey';
 
 drop table navitia.stop_time;
@@ -598,7 +696,7 @@ departure_stop_point_id,
 destination_stop_point_id,
 connection_type_id,
 properties_id,
-duration,
+greatest(duration,0) as duration,
 max_duration,
 display_duration
 FROM (
@@ -677,7 +775,18 @@ FROM
          FROM stoppoint as sp1
          JOIN stoppoint as sp2 ON (st_expand(sp1.the_geom_rd,200) && sp2.the_geom_rd)
          WHERE sp1.isscheduled = true AND sp2.isscheduled = true
-           AND sp1.stoparearef is not null AND sp2.stoparearef is not null) as nearby_stopareas
+           AND sp1.stoparearef is not null AND sp2.stoparearef is not null
+UNION
+SELECT distinct sp1.stoparearef as from_stoparea,sp2.stoparearef as to_stoparea
+         FROM stoppoint as sp1
+         JOIN stoppoint as sp2 ON (st_expand(sp1.the_geom_rd,600) && sp2.the_geom_rd)
+         WHERE sp1.isscheduled = true AND sp2.isscheduled = true AND 
+(sp1.name = 'Utrecht Centraal' or sp1.name like 'Utrecht, CS%' OR sp1.name like 'Amsterdam, Centraal%' 
+ OR sp1.name like 'Amsterdam, CS%' OR sp1.name = 'Amsterdam Centraal')
+AND (sp2.name = 'Utrecht Centraal' OR sp2.name like 'Utrecht, CS%' OR sp2.name like 'Amsterdam, Centraal%'
+     OR sp2.name like 'Amsterdam, CS%' OR sp2.name = 'Amsterdam Centraal')
+           AND sp1.stoparearef is not null AND sp2.stoparearef is not null
+) as nearby_stopareas
 JOIN (SELECT sp1.id as from_stop_id,sp1.stoparearef as from_stoparea,sp2.id as to_stop_id,sp2.stoparearef as to_stoparea
  FROM stoppoint as sp1
  JOIN stoppoint as sp2 ON (st_expand(sp1.the_geom_rd,1000) && sp2.the_geom_rd)) as nearby_stoppoints USING (from_stoparea,to_stoparea)
@@ -698,7 +807,18 @@ FROM
          FROM stoppoint as sp1
          JOIN stoppoint as sp2 ON (st_expand(sp1.the_geom_rd,200) && sp2.the_geom_rd)
          WHERE sp1.isscheduled = true AND sp2.isscheduled = true
-           AND sp1.stoparearef is not null AND sp2.stoparearef is not null) as nearby_stopareas
+           AND sp1.stoparearef is not null AND sp2.stoparearef is not null
+UNION
+SELECT distinct sp1.stoparearef as from_stoparea,sp2.stoparearef as to_stoparea
+         FROM stoppoint as sp1
+         JOIN stoppoint as sp2 ON (st_expand(sp1.the_geom_rd,600) && sp2.the_geom_rd)
+         WHERE sp1.isscheduled = true AND sp2.isscheduled = true AND 
+(sp1.name = 'Utrecht Centraal' or sp1.name like 'Utrecht, CS%' OR sp1.name like 'Amsterdam, Centraal%' 
+ OR sp1.name like 'Amsterdam, CS%' OR sp1.name = 'Amsterdam Centraal')
+AND (sp2.name = 'Utrecht Centraal' OR sp2.name like 'Utrecht, CS%' OR sp2.name like 'Amsterdam, Centraal%' 
+     OR sp2.name like 'Amsterdam, CS%' OR sp2.name = 'Amsterdam Centraal')
+           AND sp1.stoparearef is not null AND sp2.stoparearef is not null
+) as nearby_stopareas
 JOIN (SELECT sp1.id as from_stop_id,sp1.stoparearef as from_stoparea,sp2.id as to_stop_id,sp2.stoparearef as to_stoparea
  FROM stoppoint as sp1
  JOIN stoppoint as sp2 ON (st_expand(sp1.the_geom_rd,1000) && sp2.the_geom_rd)) as nearby_stoppoints USING (from_stoparea,to_stoparea)
