@@ -346,7 +346,7 @@ nullif(veh_type_text ilike '%%niederflurbus%%',false) as lowfloor,
 NULL as hasLiftOrRamp,
 NULL as haswifi,
 NULL as bicycleallowed,
-veh_type_text ilike '%%taxi%%' as onDemand
+(veh_type_text ilike '%%taxi%%' OR veh_type_text ilike '%%rufbus%%')as onDemand
 FROM rec_trip LEFT JOIN set_vehicle_type USING (version,veh_type_nr)
 """,[prefix]*6)
     journeys = {}
