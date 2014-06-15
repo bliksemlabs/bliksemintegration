@@ -342,11 +342,11 @@ NULL as noticeassignmentRef,
 departuretime,
 NULL as blockref,
 coalesce(coalesce(trip_id_printing,train_nr),trip_id) as name,
-NULL as lowfloor,
+nullif(veh_type_text ilike '%%niederflurbus%%',false) as lowfloor,
 NULL as hasLiftOrRamp,
 NULL as haswifi,
 NULL as bicycleallowed,
-lower(veh_type_text) like '%%taxi%%' as onDemand
+veh_type_text ilike '%%taxi%%' as onDemand
 FROM rec_trip LEFT JOIN set_vehicle_type USING (version,veh_type_nr)
 """,[prefix]*6)
     journeys = {}
