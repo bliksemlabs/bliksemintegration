@@ -155,7 +155,7 @@ FROM
          JOIN calendar_of_the_company as cotc USING (version,day_type_nr)
          LEFT JOIN (SELECT version,restriction,unnest(bitcalendar(date_from,('x' || restriction_days) :: bit varying(1024)))::date as day
                FROM service_restriction) as restricted USING (version,restriction,day)
-WHERE restricted.day is not null
+WHERE restricted.day is null
 GROUP BY operator_id,privatecode,unitcode,versionref,name;
 """,[prefix]*4)
     for row in cur.fetchall():
