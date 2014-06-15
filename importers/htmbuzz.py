@@ -3,8 +3,9 @@ from inserter import insert,version_imported,reject
 from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
-from htm import setLineColors
+from htm import setLineColors,cleanDest,generatePool
 import logging
+from settings.const import *
 
 logger = logging.getLogger("importer")
 
@@ -45,7 +46,6 @@ SELECT 'DATASOURCE' as type,'1' as datasourceref,min(validfrom) as fromdate,max(
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
     if datetime.strptime(meta['enddate'].replace('-',''),'%Y%m%d') < (datetime.now() - timedelta(days=1)):
-        data = {}
         data['DATASOURCE'] = getDataSource()
         data['VERSION'] = {}
         data['VERSION']['1'] = {'privatecode'   : 'HTMBUZZ:'+filename,
@@ -62,6 +62,9 @@ def import_zip(path,filename,version):
         return
     try:
         data = {}
+        cleanDest(conn)
+        if pool_generation_enabled:
+            generatePool(conn)
         data['OPERATOR'] = getOperator()
         data['MERGESTRATEGY'] = getMergeStrategies(conn)
         data['DATASOURCE'] = getDataSource()
