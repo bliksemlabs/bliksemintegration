@@ -105,7 +105,7 @@ FROM jopa join ( SELECT DISTINCT ON (dataownercode, lineplanningnumber, journeyp
         journeypatterns[row['operator_id']]['POINTS'] = []
         row['routeref'] = routeRefForPattern[row['operator_id']]
     cur.execute("""
-(SELECT
+(SELECT DISTINCT ON (journeypatternref,pointorder)
 j.dataownercode||':'||lineplanningnumber||':'||journeypatterncode as journeypatternref,
 cast(timinglinkorder  as integer) as pointorder,
 null as privatecode,
@@ -128,6 +128,7 @@ coalesce(sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,jou
 FROM jopatili as j JOIN line USING (dataownercode,lineplanningnumber)
                    JOIN link as l USING (dataownercode,userstopcodebegin,userstopcodeend,transporttype)
                    JOIN dest USING (dataownercode,destcode) JOIN usrstop as u ON (u.userstopcode = j.userstopcodebegin)
+ORDER BY journeypatternref,pointorder,l.validfrom
 )
 UNION (
 SELECT DISTINCT ON (j.dataownercode,lineplanningnumber,journeypatterncode)
@@ -150,7 +151,7 @@ sum(distance) OVER (PARTITION BY j.dataownercode,lineplanningnumber,journeypatte
 FROM jopatili as j JOIN line using (dataownercode,lineplanningnumber)
                    JOIN link as l using (dataownercode,userstopcodebegin,userstopcodeend,transporttype)
                    JOIN usrstop as u ON (u.userstopcode = j.userstopcodeend)
-ORDER BY j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC)
+ORDER BY j.dataownercode,lineplanningnumber,journeypatterncode,timinglinkorder DESC,l.validfrom ASC)
 ORDER BY journeypatternref,pointorder
 """)
     distance = 0
