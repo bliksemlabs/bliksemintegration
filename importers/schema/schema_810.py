@@ -129,7 +129,7 @@ CREATE TEMPORARY TABLE "pool" (
 	LinkValidFrom DATE NOT NULL,
 	PointDataOwnerCode VARCHAR(10) NOT NULL,
 	PointCode VARCHAR(10) NOT NULL,
-	DistanceSinceStartOfLink NUMERIC(5) NOT NULL,
+	DistanceSinceStartOfLink INTEGER NOT NULL,
 	SegmentSpeed DECIMAL(4),
 	LocalPointSpeed DECIMAL(4),
 	Description VARCHAR(255),
