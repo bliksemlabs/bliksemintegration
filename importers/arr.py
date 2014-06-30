@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import urllib2
 from datetime import datetime,timedelta
 import logging
+from settings.const import *
 
 logger = logging.getLogger("importer")
 
@@ -29,8 +30,32 @@ def getOperator():
                                'phone'       : '0800-0232545',
                                'url'         : 'http://www.waterbus.nl',
                                'timezone'    : 'Europe/Amsterdam',
+                               'language'    : 'nl'},
+              'AQUALINER' :   {'privatecode' : 'AQUALINER',
+                               'operator_id' : 'AQUALINER',
+                               'name'        : 'Aqualiner',
+                               'phone'       : '0800-0232545',
+                               'url'         : 'http://www.aqualiner.nl',
+                               'timezone'    : 'Europe/Amsterdam',
                                'language'    : 'nl'}
            }
+
+def setLineColors():
+    conn = psycopg2.connect(database_connect)
+    cur = conn.cursor()
+    cur.execute("""
+UPDATE line set color_shield = '004990', color_text= 'ffffff' WHERE operator_id = 'ARR:15020';
+UPDATE line set color_shield = 'ff0119', color_text= 'ffffff' WHERE operator_id = 'ARR:18017';
+UPDATE line set color_shield = 'a474fe', color_text= 'ffffff' WHERE operator_id = 'ARR:18018';
+UPDATE line set color_shield = '0fa30f', color_text= 'ffffff' WHERE operator_id = 'ARR:18019';
+UPDATE line set color_shield = '659ad2', color_text= '000000' WHERE operator_id = 'ARR:15021';
+UPDATE line set color_shield = 'fcaf17', color_text= '000000' WHERE operator_id = 'ARR:15022';
+UPDATE line set color_shield = '5dbc56', color_text= '000000' WHERE operator_id = 'ARR:15023';
+UPDATE line set color_shield = 'f36f2b', color_text= '000000' WHERE operator_id = 'ARR:15024';
+""")
+    cur.close()
+    conn.commit()
+    conn.close()
 
 def getMergeStrategies(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -44,7 +69,7 @@ SELECT 'UNITCODE' as type,dataownercode||':'||organizationalunitcode as unitcode
 def containsTrain(conn):
    cur = conn.cursor()
    cur.execute("""
-SELECT 1 FROM line where transporttype = 'TRAIN' or lineplanningnumber like '11___' or lineplanningnumber like '13___' or 
+SELECT 1 FROM line where transporttype = 'TRAIN' or lineplanningnumber like '11___' or lineplanningnumber like '13___' or
 lineplanningnumber like '12___' or lineplanningnumber like '14___'
 """)
    rows = cur.fetchall()
@@ -53,7 +78,7 @@ lineplanningnumber like '12___' or lineplanningnumber like '14___'
 
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
-    if containsTrain(conn):
+    if not import_arriva_trains and containsTrain(conn):
         data = {}
         data['DATASOURCE'] = getDataSource()
         data['VERSION'] = {}
@@ -113,6 +138,7 @@ def import_zip(path,filename,version):
         data['NOTICEGROUP'] = {}
         conn.close()
         insert(data)
+        setLineColors()
     except:
         raise
 

@@ -14,9 +14,11 @@ WHERE operator_id like 'IFF:%'
 create temporary table servicecalendar as (
 SELECT validfrom,bitcalendar,row_number() OVER () as service_id,unnest(array_agg(availabilityconditionref)) as availabilityconditionref  FROM (
    SELECT availabilityconditionref, bitcalendar(array_agg(validdate ORDER BY validdate)) as bitcalendar,min(validdate) as validfrom FROM 
-    availabilityconditionday as ad WHERE isavailable = true AND 
-validdate between date 'yesterday' AND (select 
-max(todate) from activeavailabilitycondition where operator_id like 'IFF%') GROUP by availabilityconditionref) as x
+    serviceday as ad JOIN availabilitycondition as ac ON (ac.id = availabilityconditionref)
+                     JOIN version as v ON (v.id = versionref)
+                     JOIN datasource as d ON (d.id = datasourceref)
+     WHERE d.operator_id not like 'TEC' AND validdate BETWEEN date 'yesterday' AND 
+         (select max(todate) from activeavailabilitycondition where operator_id like 'IFF%') GROUP by availabilityconditionref) as x
 GROUP BY validfrom,bitcalendar
 ORDER BY service_id
 );
@@ -52,7 +54,7 @@ lineref as route_id,
 service_id,
 j.id as trip_id,
 j.privatecode as realtime_trip_id,
-d.name as trip_headsign,
+trim(both from d.name) as trip_headsign,
 j.name as trip_short_name,
 pc.name as trip_long_name,
 (directiontype % 2 = 0)::int4 as direction_id,
@@ -124,8 +126,8 @@ SELECT
 j.id as trip_id,
 p_pt.pointorder as stop_sequence,
 p_pt.pointref as stop_id,
-CASE WHEN (p.destinationdisplayref != p_pt.destinationdisplayref AND p_pt.destinationdisplayref is not null) THEN d.name ELSE null END as 
-stop_headsign,
+CASE WHEN (p.destinationdisplayref != p_pt.destinationdisplayref AND p_pt.destinationdisplayref is not null)
+     THEN trim(both from d.name) ELSE null END as stop_headsign,
 to32time(departuretime+totaldrivetime) as arrival_time,
 to32time(departuretime+totaldrivetime+stopwaittime) as departure_time,
 CASE WHEN (forboarding = false) THEN 1
@@ -162,9 +164,10 @@ CASE WHEN (s.operator_id not like 'RET:%' AND s.name not in  ('Petten, Campanula
 CASE WHEN (stoparearef is null) THEN s.timezone ELSE NULL END as stop_timezone,
 restrictedmobilitysuitable::int4 as wheelchair_boarding,
 s.platformcode as platform_code,
-rail_fare.station as zone_id
+CASE WHEN (split_part(s.operator_id,':',1) in ('CXX')) THEN s.operator_id 
+     WHEN (split_part(s.operator_id,':',1) in ('IFF')) THEN stoparea.operator_id
+     ELSE NULL END as zone_id
 FROM scheduledstoppoint as s LEFT JOIN stoparea ON (stoparea.id = s.stoparearef)
-                             LEFT JOIN (select distinct station from rail_fare) as rail_fare ON (rail_fare.station = stoparea.operator_id)
 WHERE s.id in (SELECT DISTINCT stop_id from gtfs_stop_times) OR s.operator_id like 'IFF%'
 );
 INSERT INTO gtfs_stops (
@@ -215,21 +218,52 @@ FROM rail_fare
 WHERE
 station in (select distinct operator_id from stoparea) AND
 onwardstation in (select distinct operator_id from stoparea)
+UNION
+(SELECT DISTINCT ON (matrix_id,route_id,origin_id,destination_id)
+matrix_id as fare_id,
+l.id::text as route_id,
+s.operator_id as origin_id,
+e.operator_id as destination_id,
+NULL::text as contains_id
+FROM cxx_fares as f JOIN line as l ON (l.operator_id = f.line_id)
+                    JOIN scheduledstoppoint as s ON (s.operator_id = startstoppointref)
+                    JOIN scheduledstoppoint as e ON (e.operator_id = endstoppointref)
+                    JOIN gtfs_routes ON (l.id = route_id)
+                    JOIN gtfs_stops as sg ON (s.operator_id = sg.zone_id)
+                    JOIN gtfs_stops as eg ON (e.operator_id = eg.zone_id)
+)
 );
 
 CREATE TEMPORARY TABLE gtfs_fare_attributes as (
-SELECT DISTINCT ON (secondfull::float,fare_id)
+(SELECT DISTINCT ON (secondfull::float,fare_id)
 'IFF:'||f.fare_units as fare_id,
 'IFF:NS'::text as agency_id,
-secondfull as price,
+(secondfull::double precision/100)::text as price,
 'EUR'::text as currency_type,
 1::int4 as payment_method,
 NULL::int4 as transfers,
-NULL::int4 as transfer_duration
+NULL::text as entrance_price,
+NULL::int4 as transfer_duration,
+'SPOOR'::text as fare_parent_id
 FROM rail_fare_prices as f
 WHERE
 fare_units in (SELECT DISTINCT fare_units FROM rail_fare)
-ORDER BY secondfull::float,fare_id
+ORDER BY secondfull::float,fare_id)
+UNION(
+SELECT DISTINCT ON (fare_id)
+matrix_id as fare_id,
+o.operator_id as agency_id,
+price::text,
+currency as currency_type,
+0::int4 as payment_method,
+NULL::int4 as transfers,
+entranceratewrtcurrency as entrance_price,
+60*35 as transfer_duration,
+'BTM'::text as fare_parent_id
+FROM cxx_fares as f JOIN line as l ON (l.operator_id = f.line_id)
+                    JOIN operator as o ON (operatorref = o.id)
+WHERE matrix_id in (SELECT DISTINCT fare_id FROM gtfs_fare_rules)
+)
 );
 
 COPY (SELECT * FROM gtfs_feed_info) to '/tmp/feed_info.txt' CSV HEADER;
@@ -241,5 +275,5 @@ COPY (SELECT * FROM gtfs_stops) to '/tmp/stops.txt' CSV HEADER;
 COPY (SELECT * FROM gtfs_trips) to '/tmp/trips.txt' CSV HEADER;
 COPY (SELECT * FROM gtfs_stop_times) to '/tmp/stop_times.txt' CSV HEADER;
 COPY (SELECT * FROM gtfs_transfers) to '/tmp/transfers.txt' CSV HEADER;
---COPY (SELECT * FROM gtfs_fare_rules) to '/tmp/fare_rules.txt' CSV HEADER;
---COPY (SELECT * FROM gtfs_fare_attributes) to '/tmp/fare_attributes.txt' CSV HEADER;
+COPY (SELECT * FROM gtfs_fare_rules) to '/tmp/fare_rules.txt' CSV HEADER;
+COPY (SELECT * FROM gtfs_fare_attributes) to '/tmp/fare_attributes.txt' CSV HEADER;

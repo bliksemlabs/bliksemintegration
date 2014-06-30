@@ -196,7 +196,7 @@ create table StopPoint(
     latitude double precision NOT NULL,
     longitude double precision NOT NULL,
     rd_x integer,
-    rd_y integer, 
+    rd_y integer,
     timezone varchar(255),
     platformcode varchar(25),
     the_geom geometry(Point,4326),
@@ -205,7 +205,7 @@ create table StopPoint(
     restrictedmobilitysuitable boolean
 );
 
-CREATE VIEW scheduledstoppoint AS (SELECT 
+CREATE VIEW scheduledstoppoint AS (SELECT
 id,privatecode,operator_id,publiccode,stoparearef,name,town,latitude,longitude,rd_x,rd_y,timezone,platformcode,visualimpairmentsuitable,
 restrictedmobilitysuitable
 FROM stoppoint where isscheduled = true);
@@ -262,7 +262,7 @@ create table journeytransfers(
     FOREIGN KEY (onwardjourneyref) REFERENCES journey(id) ON DELETE CASCADE
 );
 
-CREATE OR REPLACE FUNCTION 
+CREATE OR REPLACE FUNCTION
 to32time(time24 text, shift24 integer) RETURNS text AS $$
 SELECT lpad(floor((total / 3600))::text, 2, '0')||':'||lpad(((total % 3600) / 60)::text, 2, '0')||':'||lpad((total % 60)::text, 2, '0') AS time
 FROM
@@ -274,7 +274,7 @@ FROM
 ) as xtotal
 $$ LANGUAGE SQL;
 
-CREATE OR REPLACE FUNCTION 
+CREATE OR REPLACE FUNCTION
 toseconds(time24 text, shift24 integer) RETURNS integer AS $$
 SELECT total AS time
 FROM
@@ -286,9 +286,9 @@ FROM
 ) as xtotal
 $$ LANGUAGE SQL;
 
-CREATE OR REPLACE FUNCTION 
+CREATE OR REPLACE FUNCTION
 to32time(secondssincemidnight integer) RETURNS text AS $$
-SELECT lpad(floor((secondssincemidnight / 3600))::text, 2, '0')||':'||lpad(((secondssincemidnight % 3600) / 60)::text, 2, 
+SELECT lpad(floor((secondssincemidnight / 3600))::text, 2, '0')||':'||lpad(((secondssincemidnight % 3600) / 60)::text, 2,
 '0')||':'||lpad((secondssincemidnight % 60)::text, 2, '0') AS time
 $$ LANGUAGE SQL;
 
@@ -338,11 +338,11 @@ LEFT JOIN
 FROM (SELECT regexp_split_to_table($2::varchar,'') AS usedate) AS y) AS y1
 ON a = b
 WHERE usedate = '1';
-$$ LANGUAGE SQL; 
+$$ LANGUAGE SQL;
 
 CREATE table transportmode (
-    transportmode varchar(255) primary key, 
-    bison_transporttype varchar(255), 
+    transportmode varchar(255) primary key,
+    bison_transporttype varchar(255),
     gtfs_route_type int4,
     name varchar(255)
 );
@@ -361,19 +361,19 @@ create table rail_fare (
 
 create table rail_fare_prices (
     fare_units integer primary key,
-    secondfull varchar(6),
-    second20 varchar(6),
-    second40 varchar(6),
-    firstfull varchar(6),
-    first20 varchar(6),
-    first40 varchar(6)
+    secondfull integer,
+    second20 integer,
+    second40 integer,
+    firstfull integer,
+    first20 integer,
+    first40 integer
 );
 
 CREATE VIEW scheduledlink AS (
 SELECT DISTINCT pjp_from.pointref as from_pointref,pjp_to.pointref as to_pointref
 FROM
 (SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
-                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_from JOIN 
+                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_from JOIN
 (SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
                                                                   JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_to
 ON (pjp_from.journeypatternref = pjp_to.journeypatternref AND pjp_from.idx = pjp_to.idx-1)
@@ -383,7 +383,7 @@ CREATE VIEW LinescheduledLink AS (
 SELECT DISTINCT l.id,pjp_from.pointref as from_pointref,pjp_to.pointref as to_pointref
 FROM
 (SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
-                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_from JOIN 
+                                                                  JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_from JOIN
 (SELECT *,row_number() OVER (PARTITION BY journeypatternref ORDER BY pointorder) as idx FROM pointinjourneypattern as pjp
                                                                   JOIN scheduledstoppoint sp ON (sp.id = pointref)) AS pjp_to
 ON (pjp_from.journeypatternref = pjp_to.journeypatternref AND pjp_from.idx = pjp_to.idx-1)

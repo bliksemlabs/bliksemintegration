@@ -69,7 +69,7 @@ def calculateTimeDemandGroups(conn):
     journeyinfo = {}
     cur.execute("""
 SELECT concat_ws(':','IFF',serviceid,line_id,footnote,coalesce(variant,servicenumber)) as JOURNEY_id, 
-array_agg(cast(stoporder as integer) order by stoporder) as stoporders,array_agg(toseconds(coalesce(arrivaltime,departuretime),0) order by stoporder) as 
+array_agg(cast(stoporder*10 as integer) order by stoporder) as stoporders,array_agg(toseconds(coalesce(arrivaltime,departuretime),0) order by stoporder) as 
 arrivaltimes,array_agg(toseconds(coalesce(departuretime,arrivaltime),0) order by stoporder) as departuretimes
 FROM passtimes
 GROUP BY JOURNEY_id
@@ -112,10 +112,14 @@ coalesce(x,0) as rd_x,
 coalesce(y,0) as rd_y,
 platform as platformcode
 FROM 
-(SELECT DISTINCT ON (station,platform) station,platform,station||':'||coalesce(platform,'0') as stopid FROM passtimes) as stations
+(SELECT DISTINCT ON (station,platform) station,platform,stopid FROM (
+SELECT station,platform,station||':'||coalesce(platform,'0') as stopid FROM passtimes
+UNION
+SELECT DISTINCT ON (station) station,NULL::text as platform,station||':0' as stopid from passtimes) as x) as stations
           LEFT JOIN (select country,shortname as station,trainchanges,name,x,y,st_transform(st_setsrid(st_makepoint(x,y),28992),4326) as the_geom 
 from station) as station USING (station)
           LEFT JOIN quays ON (stopid = quays.id)                          
+;
 """)
     for row in cur.fetchall():
         if row['rd_x'] is None:
@@ -405,7 +409,7 @@ ORDER BY line_id,patterncode,stoporder ASC) as y
     cur.execute("""
 SELECT DISTINCT ON (p1.line_id,p1.patterncode,p1.stoporder)
 'IFF:'||p1.line_id||':'||p1.patterncode as journeypatternref,
-p1.stoporder::integer as pointorder,
+p1.stoporder::integer*10 as pointorder,
 NULL as privatecode,
 NULL as operator_id,
 'IFF:'||p1.station||':'||coalesce(p1.platform,'0') as pointref,
@@ -413,7 +417,7 @@ NULL as operator_id,
 NULL as destinationdisplayref,
 'IFF:'||p1.attrs::text as noticeassignmentRef,
 NULL as administrativezoneref,
-p1.forboarding as iswaitpoint,
+true as iswaitpoint,
 0 as waittime,
 NULL as requeststop,
 coalesce(p1.foralighting,true) as foralighting,
@@ -436,7 +440,7 @@ ORDER BY p1.line_id,p1.patterncode,p1.stoporder ASC
                 distance = point['distancefromstart']
                 row['distancefromstartroute'] = distance
                 break
-        if distance == 0 and int(row['pointorder']) > 3:
+        if distance == 0 and int(row['pointorder']) > 30:
             raise Exception('distancefromstartroute going wrong'+str(journeypatterns[row['journeypatternref']]['POINTS']))
         row['distancefromstartroute'] = distance
         journeypatterns[row['journeypatternref']]['POINTS'].append(row)
@@ -468,6 +472,7 @@ def getOperator(conn):
                  'EETC'    : {'url' : 'http://www.eetc.nl',        'language' : 'nl', 'phone' : '015-2133636'},
                  'VALLEI'  : {'url' : 'http://www.valleilijn.nl',  'language' : 'nl', 'phone' : '0900-2666399'},
                  'HISPEED' : {'url' : 'http://www.nshispeed.nl',   'language' : 'nl', 'phone' : '0900-9296'},
+                 'NSI'     : {'url' : 'http://www.nsinternational.nl',   'language' : 'nl', 'phone' : '0900-9296'},
                  'SNCF'    : {'url' : 'http://www.sncf.fr',        'language' : 'fr', 'phone' : '+33890640650'},
                  'CONNEXXI': {'url' : 'http://www.connexxion.nl',  'language' : 'nl', 'phone' : '0900-2666399'},
                  'RNET'    : {'url' : 'http://www.connexxion.nl',  'language' : 'nl', 'phone' : '0900-2666399'},
@@ -494,7 +499,7 @@ def getJourneys(timedemandGroupRefForJourney,conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
 SELECT DISTINCT ON (serviceid,line_id,patterncode,servicenumber)
-concat_ws(':','IFF',coalesce(variant,servicenumber)) as privatecode,
+concat_ws(':','IFF',transmode,coalesce(variant,servicenumber)) as privatecode,
 concat_ws(':','IFF',serviceid,line_id,v.footnote,coalesce(variant,servicenumber)) as operator_id,
 concat_ws(':', 'IFF',versionnumber,v.footnote) as availabilityconditionRef,
 concat_ws(':','IFF',line_id,patterncode) as journeypatternref,
@@ -513,7 +518,9 @@ CASE WHEN transmode in ('NSS','NSB','B','BNS','X','U','Y') THEN false
      WHEN transmode in('IC','SPR','S','ST','INT','ES','THA','TGV','ICD') THEN true 
      ELSE NULL END as bicycleAllowed,
 CASE WHEN (ARRAY['RESV']::varchar[] <@ attrs) THEN true ELSE NULL END as onDemand
-FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid),delivery
+FROM PASSTIMES LEFT JOIN timetable_validity as v USING (serviceid)
+               LEFT JOIN company ON (companynumber = company.company)
+,delivery
 ORDER BY serviceid,line_id,patterncode,servicenumber,stoporder
 """)
     journeys = {}

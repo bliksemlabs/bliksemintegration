@@ -11,7 +11,7 @@ ch.setLevel(logging.INFO)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
-path = '.'
+path = '/home/thomas/rid/'
 filename = sys.argv[1]
 meta = {'dataownercode' : 'AVV'}
 

@@ -30,7 +30,7 @@ def getLines(conn,prefix=None):
         prefix = 'DINO'
     lines = {}
     cur.execute("""
-SELECT DISTINCT ON (line_nr,transportmode)
+SELECT DISTINCT ON (operator_id,transportmode)
 rec_lin_ber.branch_nr as operatorref,
 'AVV'||':'||version||':'||line_nr as operator_id,
 line_nr as privatecode,
@@ -46,7 +46,7 @@ false as monitored
 FROM
 rec_lin_ber LEFT JOIN rec_trip USING (version,line_nr)
             LEFT JOIN set_vehicle_type USING (version,veh_type_nr)
-ORDER BY line_nr,transportmode
+ORDER BY operator_id,transportmode
 """)
     for row in cur.fetchall():
         lines[row['operator_id']] = row
@@ -138,16 +138,25 @@ def getAvailabilityConditions(conn,prefix=None):
         prefix = 'DINO'
     availabilityConditions = {}
     cur.execute("""
-SELECT 
-%s||':'||version||':'||restriction as operator_id,
-%s||':'||version||':'||restriction as privatecode,
+SELECT
+concat_ws(':',%s,version,day_attribute_nr,restriction) as operator_id,
+concat_ws(':',%s,version,day_attribute_nr,restriction) as privatecode,
 %s as unitcode,
 %s||':'||version as versionref,
-concat_ws(' ',restrict_text_1,restrict_text_2,restrict_text_3) as name,
-cast(date_from as text) as fromdate,
-cast(date_until as text) as todate,
-bitcalendar(date_from,('x' || restriction_days) :: bit varying(1024))::text[] as days
-FROM service_restriction;
+NULL::text as name,
+min(day) as fromdate,
+max(day) as todate,
+array_agg(DISTINCT day) as days
+FROM 
+(SELECT DISTINCT 
+ version,restriction,day_attribute_nr FROM rec_trip) as trips
+         JOIN set_day_attribute USING (version,day_attribute_nr)
+         JOIN day_type_2_day_attribute USING (version,day_attribute_nr)
+         JOIN calendar_of_the_company as cotc USING (version,day_type_nr)
+         LEFT JOIN (SELECT version,restriction,unnest(bitcalendar(date_from,('x' || restriction_days) :: bit varying(1024)))::date as day
+               FROM service_restriction) as restricted USING (version,restriction,day)
+WHERE restricted.day is null
+GROUP BY operator_id,privatecode,unitcode,versionref,name;
 """,[prefix]*4)
     for row in cur.fetchall():
         row['DAYS'] = {'validdates' : row['days'], 'isavailable' : True, 'availabilityconditionref' : row['operator_id']}
@@ -242,6 +251,7 @@ ORDER BY operator_id,pointorder
         m = md5.new()
         m.update(str(row['POINTS']))
         row['operator_id'] = m.hexdigest()
+        row['privatecode'] = row['operator_id']
     return timedemandgroups
 
 def getJourneyPatterns(conn,routes,prefix=None):
@@ -323,8 +333,8 @@ def getJourneys(conn,prefix=None):
     cur.execute("""
 SELECT
 concat_ws(':',%s,version,line_nr,trip_id) as privatecode,
-concat_ws(':',%s,version,trip_id) as operator_id,
-concat_ws(':',%s,version,restriction) as availabilityconditionRef,
+concat_ws(':',%s,version,trip_id,row_number() OVER (PARTITION BY version,trip_id ORDER BY trip_id)) as operator_id,
+concat_ws(':',%s,version,day_attribute_nr,restriction) as availabilityconditionRef,
 concat_ws(':',%s,version,line_nr,line_dir_nr,str_line_var,dep_stop_nr,arr_stop_nr,notice) as journeypatternref,
 concat_ws(':',%s,version,line_nr,line_dir_nr,str_line_var,line_dir_nr,timing_group_nr) as timedemandgroupref,
 concat_ws(':',%s,version,str_veh_type) as productCategoryRef,
@@ -332,11 +342,11 @@ NULL as noticeassignmentRef,
 departuretime,
 NULL as blockref,
 coalesce(coalesce(trip_id_printing,train_nr),trip_id) as name,
-NULL as lowfloor,
+nullif(veh_type_text ilike '%%niederflurbus%%',false) as lowfloor,
 NULL as hasLiftOrRamp,
 NULL as haswifi,
 NULL as bicycleallowed,
-lower(veh_type_text) like '%%taxi%%' as onDemand
+(veh_type_text ilike '%%taxi%%' OR veh_type_text ilike '%%rufbus%%')as onDemand
 FROM rec_trip LEFT JOIN set_vehicle_type USING (version,veh_type_nr)
 """,[prefix]*6)
     journeys = {}

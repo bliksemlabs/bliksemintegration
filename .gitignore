@@ -39,5 +39,5 @@ nosetests.xml
 #Log files
 error.log
 
-##Backup files
+#Backup files
 backup/

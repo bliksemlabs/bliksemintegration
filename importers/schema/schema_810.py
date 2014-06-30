@@ -121,15 +121,15 @@ CREATE TEMPORARY TABLE "link" (
 ) ON COMMIT DROP;
 CREATE TEMPORARY TABLE "pool" (
 	"tablename"         VARCHAR(10)   NOT NULL,
-	version INTEGER NOT NULL, 
-	implicit CHAR(1) NOT NULL, 
+	version INTEGER NOT NULL,
+	implicit CHAR(1) NOT NULL,
 	dataownercode VARCHAR(10) NOT NULL,
 	userStopCodeBegin VARCHAR(10) NOT NULL,
 	UserStopCodeEnd VARCHAR(10) NOT NULL,
 	LinkValidFrom DATE NOT NULL,
 	PointDataOwnerCode VARCHAR(10) NOT NULL,
 	PointCode VARCHAR(10) NOT NULL,
-	DistanceSinceStartOfLink NUMERIC(5) NOT NULL,
+	DistanceSinceStartOfLink INTEGER NOT NULL,
 	SegmentSpeed DECIMAL(4),
 	LocalPointSpeed DECIMAL(4),
 	Description VARCHAR(255),
@@ -170,9 +170,9 @@ CREATE TEMPORARY TABLE "jopatili" (
 	PRIMARY KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timinglinkorder"),
 	FOREIGN KEY ("dataownercode", "confinrelcode") REFERENCES "confinrel" ("dataownercode", "confinrelcode"),
 	FOREIGN KEY ("dataownercode", "destcode") REFERENCES "dest" ("dataownercode", "destcode"),
-	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode") REFERENCES "jopa" ("dataownercode", "lineplanningnumber", 
+	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode") REFERENCES "jopa" ("dataownercode", "lineplanningnumber",
 "journeypatterncode"),
-	FOREIGN KEY ("dataownercode", "userstopcodebegin", "userstopcodeend") REFERENCES "tili" ("dataownercode", "userstopcodebegin", 
+	FOREIGN KEY ("dataownercode", "userstopcodebegin", "userstopcodeend") REFERENCES "tili" ("dataownercode", "userstopcodebegin",
 "userstopcodeend")
 ) ON COMMIT DROP;
 CREATE TEMPORARY TABLE "orun" (
@@ -270,7 +270,7 @@ CREATE TEMPORARY TABLE "timdemgrp" (
 	"journeypatterncode"  VARCHAR(10)   NOT NULL,
 	"timedemandgroupcode" VARCHAR(10)   NOT NULL,
 	PRIMARY KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode"),
-	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode") REFERENCES "jopa" ("dataownercode", "lineplanningnumber", 
+	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode") REFERENCES "jopa" ("dataownercode", "lineplanningnumber",
 "journeypatterncode") ON UPDATE CASCADE
 ) ON COMMIT DROP;
 CREATE TEMPORARY TABLE "timdemrnt" (
@@ -291,9 +291,9 @@ CREATE TEMPORARY TABLE "timdemrnt" (
 	"stopwaittime"        DECIMAL(5)    NOT NULL,
 	"minimumstoptime"     DECIMAL(5),
 	PRIMARY KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode", "timinglinkorder"),
-	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode") REFERENCES "timdemgrp" 
+	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode") REFERENCES "timdemgrp"
 ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode"),
-	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timinglinkorder") REFERENCES "jopatili" ("dataownercode", 
+	FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timinglinkorder") REFERENCES "jopatili" ("dataownercode",
 "lineplanningnumber", "journeypatterncode", "timinglinkorder")
 ) ON COMMIT DROP;
 
@@ -302,7 +302,7 @@ CREATE TEMPORARY TABLE "pujo" (
 	"version"                INTEGER    NOT NULL,
 	"implicit"               CHAR(1)       NOT NULL,
 	"dataownercode"          VARCHAR(10)   NOT NULL,
-        "timetableversioncode"   VARCHAR(10)   NOT NULL,   
+        "timetableversioncode"   VARCHAR(10)   NOT NULL,
 	"organizationalunitcode" VARCHAR(10)   NOT NULL,
 	"periodgroupcode"        VARCHAR(10)   NOT NULL,
 	"specificdaycode"        VARCHAR(10)   NOT NULL,
@@ -314,11 +314,11 @@ CREATE TEMPORARY TABLE "pujo" (
 	"departuretime"          CHAR(8)       NOT NULL,
 	"wheelchairaccessible"   VARCHAR(13)   NOT NULL,
 	"dataownerisoperator"    BOOLEAN       NOT NULL,
-	 PRIMARY KEY ("dataownercode", "timetableversioncode", "organizationalunitcode", "periodgroupcode", "specificdaycode", "daytype", 
+	 PRIMARY KEY ("dataownercode", "timetableversioncode", "organizationalunitcode", "periodgroupcode", "specificdaycode", "daytype",
 "lineplanningnumber", "journeynumber"),
-	 FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode") REFERENCES "timdemgrp" 
+	 FOREIGN KEY ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode") REFERENCES "timdemgrp"
 ("dataownercode", "lineplanningnumber", "journeypatterncode", "timedemandgroupcode"),
-	 FOREIGN KEY ("dataownercode", "organizationalunitcode", "timetableversioncode", "periodgroupcode", "specificdaycode") REFERENCES 
+	 FOREIGN KEY ("dataownercode", "organizationalunitcode", "timetableversioncode", "periodgroupcode", "specificdaycode") REFERENCES
 "tive" ("dataownercode", "organizationalunitcode", "timetableversioncode", "periodgroupcode", "specificdaycode")
 ) ON COMMIT DROP;
 
@@ -348,7 +348,7 @@ CREATE TEMPORARY TABLE operday (
     validdate date NOT NULL,
     description character varying(255),
     PRIMARY KEY (dataownercode, organizationalunitcode, schedulecode, scheduletypecode, validdate),
-    FOREIGN KEY (dataownercode, organizationalunitcode, schedulecode, scheduletypecode) REFERENCES schedvers (dataownercode, 
+    FOREIGN KEY (dataownercode, organizationalunitcode, schedulecode, scheduletypecode) REFERENCES schedvers (dataownercode,
 organizationalunitcode, schedulecode, scheduletypecode)
 ) ON COMMIT DROP;
 
@@ -370,7 +370,7 @@ CREATE TEMPORARY TABLE pujopass (
     wheelchairaccessible VARCHAR(13),
     dataownerisoperator boolean NOT NULL,
     PRIMARY KEY (dataownercode, organizationalunitcode, schedulecode, scheduletypecode, lineplanningnumber, journeynumber, stoporder),
-    FOREIGN KEY (dataownercode, organizationalunitcode, schedulecode, scheduletypecode) REFERENCES schedvers (dataownercode, 
+    FOREIGN KEY (dataownercode, organizationalunitcode, schedulecode, scheduletypecode) REFERENCES schedvers (dataownercode,
 organizationalunitcode, schedulecode, scheduletypecode),
     FOREIGN KEY (dataownercode, userstopcode) REFERENCES usrstop (dataownercode, userstopcode),
     FOREIGN KEY (dataownercode, lineplanningnumber, journeypatterncode) REFERENCES jopa (dataownercode, lineplanningnumber, journeypatterncode)

@@ -74,9 +74,10 @@ cast(distancesincestartoflink as integer) as distancefromstart
 FROM pool,(select *,st_transform(st_setsrid(st_makepoint(locationx_ew,locationy_ns),28992),4326) as the_geom from point) as point
 WHERE
 pool.pointcode = point.pointcode AND
+pool.pointdataownercode = point.dataownercode AND
 pool.dataownercode||':'||userstopcodebegin = %s AND
 pool.dataownercode||':'||userstopcodeend = %s AND
-pool.transporttype = %s
+pool.transporttype = %s AND (pointtype = 'SP' or coalesce(locationx_ew,0) != 0) 
 ORDER BY pointorder
 """,[userstopcodebegin,userstopcodeend,transporttype])
     try:

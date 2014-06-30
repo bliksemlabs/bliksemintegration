@@ -378,9 +378,9 @@ create temporary table trnsmode(code varchar(4) primary key, description varchar
 -- create table trnsmqst(code varchar(3), question varchar(29) not null, transmode varchar(4) references trnsmode, primary key(code, transmode));
 create temporary table connmode(code varchar(4) primary key, connectiontype smallint not null, description varchar(29));
 create temporary table contconn(fromstation varchar(6) references station, tostation varchar(6) references station, connectiontime integer not null, connectionmode varchar(4) references connmode not null, primary key(fromstation, tostation, connectionmode));
-create temporary table footnote(footnote integer, servicedate date);
+create temporary table footnote(footnote integer NOT NULL, servicedate date);
 create temporary table timetable_service (serviceid integer not null, companynumber integer references company, servicenumber integer, variant integer, firststop numeric(3,0), laststop numeric(3,0), servicename varchar(29));
-create temporary table timetable_validity (serviceid integer not null, footnote integer, firststop numeric(3,0), laststop numeric(3,0));
+create temporary table timetable_validity (serviceid integer not null, footnote integer NOT NULL, firststop numeric(3,0), laststop numeric(3,0));
 create temporary table timetable_transport (serviceid integer not null, transmode varchar(4) references trnsmode, firststop numeric(3,0), laststop numeric(3,0));
 create temporary table timetable_attribute (serviceid integer not null, code varchar(4) references trnsattr, firststop numeric(3,0), laststop numeric(3,0));
 create temporary table timetable_stop (serviceid integer, idx integer, station varchar(6) references station, arrivaltime char(8), departuretime char(8), primary key(serviceid, idx));
@@ -407,38 +407,33 @@ $$ LANGUAGE SQL;
 CREATE OR REPLACE FUNCTION 
 route(servicenumber integer,variant integer) RETURNS integer AS $$
 SELECT CASE WHEN (servicenumber = 0 and variant is null) THEN NULL
-            WHEN (coalesce(servicenumber,variant) between 0 and 99)    THEN (coalesce(servicenumber,variant)/10)*10
-            WHEN (coalesce(servicenumber,variant) between 100 and 109) THEN 100
-            WHEN (coalesce(servicenumber,variant) between 140 and 149) THEN 140
-            WHEN (coalesce(servicenumber,variant) between 240 and 249) THEN 240
-            WHEN (coalesce(servicenumber,variant) between 430 and 439) THEN 430
-            WHEN (coalesce(servicenumber,variant) between 440 and 449) THEN 440
-            WHEN (coalesce(servicenumber,variant) between 100 and 99999) THEN (coalesce(servicenumber,variant)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 690000 and 699999) THEN ((coalesce(servicenumber,variant)-690000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 700000 and 709999) THEN ((coalesce(servicenumber,variant)-700000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 710000 and 719999) THEN ((coalesce(servicenumber,variant)-710000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 720000 and 729999) THEN ((coalesce(servicenumber,variant)-720000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 730000 and 739999) THEN ((coalesce(servicenumber,variant)-730000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 740000 and 749999) THEN ((coalesce(servicenumber,variant)-740000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 750000 and 759999) THEN ((coalesce(servicenumber,variant)-750000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 800000 and 809999) THEN ((coalesce(servicenumber,variant)-800000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 860000 and 869999) THEN ((coalesce(servicenumber,variant)-860000)/100)*100
-            WHEN (coalesce(servicenumber,variant) between 900000 and 999999) THEN ((coalesce(servicenumber,variant)-900000)/100)*100
+            WHEN (servicenumber = 0 and variant between 900000 and 999999) THEN NULL
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 28000 and 28999) THEN NULL
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 0 and 99)    THEN (coalesce(nullif(servicenumber,0),variant)/10)*10
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 100 and 109) THEN 100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 140 and 149) THEN 140
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 240 and 249) THEN 240
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 430 and 439) THEN 430
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 440 and 449) THEN 440
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 100 and 99999) THEN (coalesce(nullif(servicenumber,0),variant)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 690000 and 699999) THEN ((coalesce(nullif(servicenumber,0),variant)-690000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 700000 and 709999) THEN ((coalesce(nullif(servicenumber,0),variant)-700000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 710000 and 719999) THEN ((coalesce(nullif(servicenumber,0),variant)-710000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 720000 and 729999) THEN ((coalesce(nullif(servicenumber,0),variant)-720000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 730000 and 739999) THEN ((coalesce(nullif(servicenumber,0),variant)-730000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 740000 and 749999) THEN ((coalesce(nullif(servicenumber,0),variant)-740000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 750000 and 759999) THEN ((coalesce(nullif(servicenumber,0),variant)-750000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 800000 and 809999) THEN ((coalesce(nullif(servicenumber,0),variant)-800000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 860000 and 869999) THEN ((coalesce(nullif(servicenumber,0),variant)-860000)/100)*100
+            WHEN (coalesce(nullif(servicenumber,0),variant) between 900000 and 999999) THEN ((coalesce(nullif(servicenumber,0),variant)-900000)/100)*100
             ELSE null END as trainnumber
 $$ LANGUAGE SQL;
 
 CREATE OR REPLACE FUNCTION 
-line_id(companynumber integer, transmode varchar,servicenumber integer,variant integer, beginstation varchar,endstation varchar) RETURNS varchar AS 
-$$
-SELECT CASE WHEN (route(servicenumber,variant) IS NOT NULL) THEN concat_ws(':',companynumber,transmode,route(servicenumber,variant))
-            ELSE concat_ws(':',companynumber,transmode,least(beginstation,endstation),greatest(beginstation,endstation))
-            END as line_id
-$$ LANGUAGE SQL;
-CREATE OR REPLACE FUNCTION 
 line_id(companynumber integer, transmode varchar,servicenumber integer,variant integer, stops varchar[]) RETURNS varchar AS $$
-SELECT CASE WHEN (route(servicenumber,variant) IS NOT NULL) THEN concat_ws(':',companynumber,transmode,route(servicenumber,variant))
-            ELSE 
-concat_ws(':',companynumber,transmode,least(stops[array_lower(stops,1)],stops[array_upper(stops,1)]),greatest(stops[array_lower(stops,1)],stops[array_upper(stops,1)]))
+SELECT CASE WHEN (transmode in ('NSB','NSS')) THEN concat_ws(':',companynumber,transmode,least(stops[array_lower(stops,1)],stops[array_upper(stops,1)]),greatest(stops[array_lower(stops,1)],stops[array_upper(stops,1)]))
+            WHEN (route(servicenumber,variant) IS NOT NULL) THEN concat_ws(':',companynumber,transmode,route(servicenumber,variant))
+            ELSE concat_ws(':',companynumber,transmode,least(stops[array_lower(stops,1)],stops[array_upper(stops,1)]),greatest(stops[array_lower(stops,1)],stops[array_upper(stops,1)]))
             END as line_id
 $$ LANGUAGE SQL;""")
 

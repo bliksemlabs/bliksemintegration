@@ -2,9 +2,9 @@ from kv1_811 import *
 from inserter import insert,version_imported
 from bs4 import BeautifulSoup
 import urllib2
-from settings.const import *
 from datetime import datetime,timedelta
-import logging
+import logging 
+from settings.const import *
 
 logger = logging.getLogger("importer")
 
@@ -46,9 +46,9 @@ def generatePool(conn):
     cur = conn.cursor()
     cur.execute("""
 CREATE TEMPORARY TABLE temp_pool as (
-SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,row_number() OVER (PARTITION BY
+SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,row_number() OVER (PARTITION BY 
 dataownercode,userstopcodebegin,userstopcodeend,transporttype ORDER BY index) as index,locationx_ew,locationy_ns
-FROM
+FROM 
 ((SELECT DISTINCT ON (userstopcodebegin,userstopcodeend,transporttype)
  dataownercode,userstopcodebegin,userstopcodeend,transporttype,0 as index,locationx_ew,locationy_ns
  FROM pool JOIN point using (version,dataownercode,pointcode)
@@ -59,23 +59,23 @@ UNION
  FROM pool JOIN point using (version,dataownercode,pointcode)
  ORDER BY userstopcodebegin,userstopcodeend,transporttype,distancesincestartoflink DESC)
 UNION
-SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,(dp).path[1] as index,st_x((dp).geom)::integer as
+SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,(dp).path[1] as index,st_x((dp).geom)::integer as 
 locationx_ew,st_y((dp).geom)::integer as locationy_ns
 FROM
 (SELECT dataownercode,userstopcodebegin,userstopcodeend,transporttype,st_dumppoints(geom) as dp FROM ebs_pool_geom) as x) as pool
 ORDER BY dataownercode,userstopcodebegin,userstopcodeend,transporttype,index);
 
-DELETE FROM temp_pool WHERE userstopcodebegin||':'||userstopcodeend||':'||transporttype NOT in (SELECT DISTINCT
+DELETE FROM temp_pool WHERE userstopcodebegin||':'||userstopcodeend||':'||transporttype NOT in (SELECT DISTINCT 
 userstopcodebegin||':'||userstopcodeend||':'||transporttype FROM ebs_pool_geom);
 
 INSERT INTO POINT (
 SELECT DISTINCT ON (locationx_ew,locationy_ns)
-'POINT',1,'I' as implicit,'EBS','OG'||row_number() OVER (ORDER BY locationx_ew,locationy_ns),current_date as validfrom,'PL' as pointtype,'RD' as
+'POINT',1,'I' as implicit,'EBS','OG'||row_number() OVER (ORDER BY locationx_ew,locationy_ns),current_date as validfrom,'PL' as pointtype,'RD' as 
 coordinatesystemtype,locationx_ew,locationy_ns,0 as locationz, NULL as description
 FROM
 temp_pool where locationx_ew||':'||locationy_ns not in (select distinct locationx_ew||':'||locationy_ns from point where version = 1)
 );
-DELETE FROM pool WHERE userstopcodebegin||':'||userstopcodeend||':'||transporttype in (SELECT DISTINCT
+DELETE FROM pool WHERE userstopcodebegin||':'||userstopcodeend||':'||transporttype in (SELECT DISTINCT 
 userstopcodebegin||':'||userstopcodeend||':'||transporttype FROM temp_pool) and version = 1;
 INSERT INTO pool(
 SELECT DISTINCT ON (version, dataownercode, userstopcodebegin, userstopcodeend, linkvalidfrom, pointcode, transporttype)
@@ -114,7 +114,7 @@ UPDATE dest SET destnamefull = replace(destnamefull,'N14 ','') WHERE destnameful
 def import_zip(path,filename,version):
     meta,conn = load(path,filename)
     fixLinenumbers(conn)
-    setProductFormulas(conn)
+    setProductFormulas(conn)    
     cleanDest(conn)
     pool_function = getFakePool811
     if pool_generation_enabled:
