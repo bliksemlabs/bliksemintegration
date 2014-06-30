@@ -155,7 +155,7 @@ FROM
          JOIN calendar_of_the_company as cotc USING (version,day_type_nr)
          LEFT JOIN (SELECT version,restriction,unnest(bitcalendar(date_from,('x' || restriction_days) :: bit varying(1024)))::date as day
                FROM service_restriction) as restricted USING (version,restriction,day)
-WHERE restricted.day is not null
+WHERE restricted.day is null
 GROUP BY operator_id,privatecode,unitcode,versionref,name;
 """,[prefix]*4)
     for row in cur.fetchall():
@@ -342,11 +342,11 @@ NULL as noticeassignmentRef,
 departuretime,
 NULL as blockref,
 coalesce(coalesce(trip_id_printing,train_nr),trip_id) as name,
-NULL as lowfloor,
+nullif(veh_type_text ilike '%%niederflurbus%%',false) as lowfloor,
 NULL as hasLiftOrRamp,
 NULL as haswifi,
 NULL as bicycleallowed,
-lower(veh_type_text) like '%%taxi%%' as onDemand
+(veh_type_text ilike '%%taxi%%' OR veh_type_text ilike '%%rufbus%%')as onDemand
 FROM rec_trip LEFT JOIN set_vehicle_type USING (version,veh_type_nr)
 """,[prefix]*6)
     journeys = {}

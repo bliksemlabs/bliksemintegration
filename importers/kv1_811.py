@@ -77,7 +77,7 @@ pool.pointcode = point.pointcode AND
 pool.pointdataownercode = point.dataownercode AND
 pool.dataownercode||':'||userstopcodebegin = %s AND
 pool.dataownercode||':'||userstopcodeend = %s AND
-pool.transporttype = %s
+pool.transporttype = %s AND (pointtype = 'SP' or coalesce(locationx_ew,0) != 0) 
 ORDER BY pointorder
 """,[userstopcodebegin,userstopcodeend,transporttype])
     try:
