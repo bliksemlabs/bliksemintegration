@@ -157,18 +157,22 @@ def merge():
     cur.execute("""
 begin;
 UPDATE availabilityconditionday set isavailable = false WHERE availabilityconditionref IN
-(SELECT availabilitycondition.id FROM availabilitycondition LEFT JOIN version ON (versionref = version.id) 
-                                      LEFT JOIN datasource ON (datasourceref= datasource.id)
+(SELECT availabilitycondition.id FROM availabilitycondition
+                                 JOIN version ON (versionref = version.id) 
+                                 JOIN datasource ON (datasourceref= datasource.id)
  WHERE datasource.operator_id = 'GVB');
 
-UPDATE availabilityconditionday set isavailable = true WHERE availabilityconditionref||':'||validdate in
-(SELECT DISTINCT ON (unitcode,validdate) availabilityconditionref||':'||validdate
-FROM availabilityconditionday as ad JOIN availabilitycondition as ac ON (availabilityconditionref = ac.id)
-JOIN (SELECT version.id,version.operator_id,startdate,enddate,version.description,row_number() over (order by startdate ASC,enddate DESC) as idx
-FROM VERSION JOIN datasource ON (datasourceref= datasource.id)
-WHERE datasource.operator_id = 'GVB'
-ORDER BY startdate ASC,enddate DESC) as importorder ON (versionref = importorder.id)
+UPDATE availabilityconditionday set isavailable = true WHERE availabilityconditionref||':'||validdate in (
+SELECT DISTINCT ON (unitcode,validdate) ac.id||':'||validdate
+FROM 
+ (SELECT *,generate_series(fromdate,todate,interval '1 day')::date as validdate FROM availabilitycondition) as ac JOIN 
+ (SELECT version.id as versionref,version.operator_id,startdate,enddate,version.description,row_number() over (order by startdate ASC,enddate DESC) 
+as idx
+  FROM VERSION JOIN datasource ON (datasourceref= datasource.id)
+  WHERE datasource.operator_id = 'GVB'
+  ORDER BY startdate ASC,enddate DESC) as importorder USING (versionref)
 ORDER BY unitcode,validdate,importorder.idx DESC);
+
 commit;
 """)
     conn.commit()
