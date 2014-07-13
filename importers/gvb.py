@@ -163,7 +163,7 @@ UPDATE availabilityconditionday set isavailable = false WHERE availabilitycondit
  WHERE datasource.operator_id = 'GVB');
 
 UPDATE availabilityconditionday set isavailable = true WHERE availabilityconditionref||':'||validdate in (
-SELECT DISTINCT ON (unitcode,validdate) ac.id||':'||validdate
+SELECT DISTINCT ON (unitcode,ac.validdate) ac.id||':'||ac.validdate
 FROM 
  (SELECT *,generate_series(fromdate,todate,interval '1 day')::date as validdate FROM availabilitycondition) as ac JOIN 
  (SELECT version.id as versionref,version.operator_id,startdate,enddate,version.description,row_number() over (order by startdate ASC,enddate DESC) 
@@ -171,7 +171,9 @@ as idx
   FROM VERSION JOIN datasource ON (datasourceref= datasource.id)
   WHERE datasource.operator_id = 'GVB'
   ORDER BY startdate ASC,enddate DESC) as importorder USING (versionref)
-ORDER BY unitcode,validdate,importorder.idx DESC);
+  LEFT JOIN availabilityconditionday as ad ON (ad.availabilityconditionref = ac.id AND ad.validdate = ac.validdate)
+ORDER BY unitcode ASC,ac.validdate ASC,importorder.idx DESC,(ad.validdate is not null) DESC
+);
 
 commit;
 """)
