@@ -271,7 +271,7 @@ confinrel LEFT JOIN conarea using (dataownercode,concessionareacode)
 
 def getLineWithGeneratedNames(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    lines = {}
+    lines = getLines(conn)
     cur.execute("""
 SELECT DISTINCT ON (operator_id) 
 operator_id,
