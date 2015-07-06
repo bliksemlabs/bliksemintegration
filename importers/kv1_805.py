@@ -399,7 +399,8 @@ def getBISONproductcategories():
             '47' : {'operator_id' : '47','privatecode' : 47,'name' : '6 4 2 bus', 'shortname' : None},
             '48' : {'operator_id' : '48','privatecode' : 48,'name' : 'Gemaksbus', 'shortname' : None},
             '49' : {'operator_id' : '49','privatecode' : 49,'name' : 'Frequentbus', 'shortname' : None},
-            '50' : {'operator_id' : '50','privatecode' : 50,'name' : 'BOB-bus', 'shortname' : None}
+            '50' : {'operator_id' : '50','privatecode' : 50,'name' : 'BOB-bus', 'shortname' : None},
+            '51' : {'operator_id' : '51','privatecode' : 51,'name' : 'Kernnetlijn', 'shortname' : None}
            }
 
 def getJourneyPatterns(routeRefForPattern,conn,routes):
