@@ -366,6 +366,12 @@ def sql_stations(conn,data):
 def create_schema(conn):
     cur = conn.cursor()
     cur.execute("""
+create table if not exists quays (
+id text,
+latitude double precision,
+longitude double precision,
+platform_code text);
+
 create temporary table country(code varchar(4) primary key, inland boolean not null, name varchar(29) not null);
 create temporary table company(company integer primary key, code varchar(9) not null, name varchar(29) not null, timeturn time);
 create temporary table delivery(company integer references company, firstday date, lastday date, versionnumber integer, description varchar(29));
